@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+# No Test Execution Rule
+
+## Important: Never Execute Test Cases from Command Line
+
+**NEVER** run any test cases, test suites, or testing commands from the command line or terminal. This includes but is not limited to:
+
+- `npm test`
+- `npm run test`
+- `jest`
+- `mocha`
+- `cypress`
+- `playwright test`
+- `pytest`
+- `unittest`
+- Any other testing framework commands
+
+### Why This Rule Exists
+- Test execution may interfere with development workflow
+- Tests should only be run in controlled environments
+- Prevents accidental test runs that could affect the system
+- Maintains development environment stability
+
+### What to Do Instead
+- Use IDE-integrated test runners when needed
+- Review test code without execution
+- Focus on code analysis and development tasks
+- If test execution is absolutely necessary, consult with the team first
+
+### Compliance
+Always check any proposed terminal commands to ensure they do not include test execution commands before suggesting or running them.

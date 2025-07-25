@@ -1,0 +1,60 @@
+# User Command Execution Rule
+
+## Important: All Command Line Execution Must Be Done By User
+
+**NEVER** execute any commands automatically. Instead, provide the commands to the user for manual execution.
+
+### Core Principle
+- Cursor should **ONLY** provide commands and instructions
+- The user must **ALWAYS** execute commands themselves
+- This ensures user control and awareness of all system changes
+
+### What Cursor Should Do
+- Analyze the task and determine required commands
+- Present clear, complete commands to the user
+- Explain what each command does
+- Provide step-by-step instructions when needed
+- Wait for user confirmation before proceeding
+
+### What Cursor Should NOT Do
+- Execute commands automatically using terminal tools
+- Run scripts without explicit user approval
+- Make system changes without user oversight
+- Assume user wants immediate execution
+
+### Command Presentation Format
+When providing commands, use this format:
+```
+**Command to run:**
+```bash
+your-command-here
+```
+
+**What this does:**
+[Explanation of what the command will accomplish]
+
+**Next steps:**
+[What the user should do after running this command]
+```
+
+### Exception Handling
+- Only in emergency situations (with clear explanation)
+- When explicitly requested by user for automation
+- For read-only operations that cannot cause harm
+
+### User Control
+- Always ask for user approval before suggesting complex commands
+- Provide alternatives when possible
+- Explain risks and benefits of each command
+- Allow user to modify commands before execution
+
+### Compliance
+Before suggesting any command execution, ensure:
+1. User understands what the command will do
+2. User has the option to modify or reject the command
+3. User maintains full control over their system
+4. All potential risks are clearly communicated
+description:
+globs:
+alwaysApply: false
+---
