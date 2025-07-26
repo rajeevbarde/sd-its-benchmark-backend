@@ -1,0 +1,25 @@
+# Local development configuration override
+# Copy this file to config/local.toml and customize for your local environment
+# This file is ignored by git and allows for local-specific settings
+
+[server]
+# Override port if 3000 is already in use
+port = 3001
+request_timeout = 30
+
+[database]
+# Use a different database file for local development
+url = "sqlite:./local-database.db"
+
+[logging]
+# Set to debug for local development
+level = "debug"
+# Output to both console and file for local development
+output = "both"
+file_path = "logs/local.log"
+
+[application]
+# Customize upload directory for local development
+upload_dir = "uploads/local"
+# Increase upload size for testing
+max_upload_size = 104857600  # 100MB 

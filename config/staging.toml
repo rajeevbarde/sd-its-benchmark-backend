@@ -1,0 +1,29 @@
+# Staging environment configuration
+# Overrides default settings for staging
+
+[server]
+host = "0.0.0.0"  # Allow external connections
+port = 8080
+workers = 8
+request_timeout = 30
+max_request_size = 10485760  # 10MB
+
+[database]
+url = "sqlite:./staging-database.db"
+max_connections = 20
+min_connections = 5
+idle_timeout = 600
+max_lifetime = 1800
+
+[logging]
+level = "info"
+format = "json"  # Structured logging for staging
+output = "both"  # Both console and file
+file_path = "logs/staging.log"
+max_file_size = 20971520  # 20MB
+max_files = 10
+
+[application]
+environment = "staging"
+upload_dir = "uploads/staging"
+max_upload_size = 52428800  # 50MB 

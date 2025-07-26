@@ -1,0 +1,30 @@
+# Production environment configuration
+# Overrides default settings for production
+
+[server]
+host = "0.0.0.0"  # Allow external connections
+port = 8080
+workers = 16  # More workers for production load
+request_timeout = 30
+max_request_size = 10485760  # 10MB
+
+[database]
+url = "sqlite:./production-database.db"
+max_connections = 50
+min_connections = 10
+idle_timeout = 600
+max_lifetime = 1800
+connection_timeout = 10
+
+[logging]
+level = "warn"  # Less verbose logging for production
+format = "json"  # Structured logging for production
+output = "file"  # File only for production
+file_path = "logs/production.log"
+max_file_size = 52428800  # 50MB
+max_files = 20
+
+[application]
+environment = "production"
+upload_dir = "uploads/production"
+max_upload_size = 52428800  # 50MB 

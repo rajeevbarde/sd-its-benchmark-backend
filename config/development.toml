@@ -1,0 +1,26 @@
+# Development environment configuration
+# Overrides default settings for development
+
+[server]
+host = "127.0.0.1"
+port = 4000
+workers = 2
+request_timeout = 60  # Longer timeout for development debugging
+max_request_size = 52428800  # 50MB for development testing
+
+[database]
+url = "sqlite:./dev-database.db"
+max_connections = 5
+min_connections = 1
+idle_timeout = 300  # Shorter timeout for development
+
+[logging]
+level = "debug"  # More verbose logging for development
+format = "text"
+output = "console"
+file_path = "logs/dev.log"
+
+[application]
+environment = "development"
+upload_dir = "uploads/dev"
+max_upload_size = 104857600  # 100MB for development testing 

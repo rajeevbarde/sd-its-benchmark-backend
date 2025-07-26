@@ -7,13 +7,15 @@ pub mod services;
 pub mod middleware;
 
 pub use config::{
-    create_pool, 
-    health_check, 
-    DatabaseConfig, 
-    initialize_database,
-    get_all_runs,
-    get_performance_results,
-    get_gpu_info,
+    Settings,
+    ServerConfig,
+    DatabaseSettings,
+    LoggingConfig,
+    ApplicationConfig,
+    Environment,
+    load_config_with_fallback,
+    validate_config,
+    initialize_config_directories,
 };
 
 pub use error::{AppError, AppResult, log_error, handle_anyhow_error};
