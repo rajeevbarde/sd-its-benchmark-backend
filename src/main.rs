@@ -8,7 +8,7 @@ use tokio::signal;
 use tracing::{info, warn};
 use dotenvy::dotenv;
 
-use sd_its_benchmark::{create_pool, DatabaseConfig, initialize_database, AppError, AppResult};
+use sd_its_benchmark::{create_pool, DatabaseConfig, initialize_database, AppError, AppResult, middleware};
 
 #[derive(Clone)]
 struct AppState {
@@ -45,9 +45,11 @@ async fn main() -> AppResult<()> {
     let state = Arc::new(AppState { db_pool });
     
     // Build application router
-    let app = Router::new()
-        .route("/health", get(health_handler))
-        .with_state(state);
+    let app = middleware::apply_middleware(
+        Router::new()
+            .route("/health", get(health_handler))
+            .with_state(state)
+    );
     
     // Get server configuration
     let host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
