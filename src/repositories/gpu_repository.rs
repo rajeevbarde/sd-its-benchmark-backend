@@ -66,6 +66,22 @@ impl GpuRepository {
 
         Ok(results)
     }
+
+    /// Clear all GPU records
+    pub async fn clear_all(&self) -> Result<(), Error> {
+        sqlx::query!("DELETE FROM GPU")
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Clear all GPU records within a transaction
+    pub async fn clear_all_tx(&self, tx: &mut Transaction<'_, Sqlite>) -> Result<(), Error> {
+        sqlx::query!("DELETE FROM GPU")
+            .execute(&mut **tx)
+            .await?;
+        Ok(())
+    }
 }
 
 #[async_trait]

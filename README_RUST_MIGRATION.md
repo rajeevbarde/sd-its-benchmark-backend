@@ -157,18 +157,18 @@ This document outlines the complete migration plan for converting the SD-ITS Ben
 - [x] Test and verify functionality
 
 #### 5.2 Admin API Handlers
-- [ ] `/api/save-data` - Bulk data import (POST)
-- [ ] `/api/process-its` - Performance data processing (POST)
-- [ ] `/api/process-app-details` - App details processing (POST)
-- [ ] `/api/process-system-info` - System info processing (POST)
-- [ ] `/api/process-libraries` - Libraries processing (POST)
-- [ ] `/api/process-gpu` - GPU data processing (POST)
-- [ ] `/api/update-gpu-brands` - GPU brand updates (POST)
-- [ ] `/api/update-gpu-laptop-info` - GPU laptop info (POST)
-- [ ] `/api/process-run-details` - Run details processing (POST)
-- [ ] `/api/app-details-analysis` - Analysis endpoint (GET)
-- [ ] `/api/fix-app-names` - App name fixing (POST)
-- [ ] `/api/update-run-more-details-with-modelmapid` - Model mapping (POST)
+- [x] `/api/save-data` - Bulk data import (POST)
+- [x] `/api/process-its` - Performance data processing (POST)
+- [x] `/api/process-app-details` - App details processing (POST)
+- [x] `/api/process-system-info` - System info processing (POST)
+- [x] `/api/process-libraries` - Libraries processing (POST)
+- [x] `/api/process-gpu` - GPU data processing (POST)
+- [x] `/api/update-gpu-brands` - GPU brand updates (POST)
+- [x] `/api/update-gpu-laptop-info` - GPU laptop info (POST)
+- [x] `/api/process-run-details` - Run details processing (POST)
+- [x] `/api/app-details-analysis` - Analysis endpoint (GET)
+- [x] `/api/fix-app-names` - App name fixing (POST)
+- [x] `/api/update-run-more-details-with-modelmapid` - Model mapping (POST)
 
 #### 5.3 Request/Response Handling
 - [ ] Input validation for all endpoints

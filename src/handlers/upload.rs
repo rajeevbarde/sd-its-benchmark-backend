@@ -14,6 +14,7 @@ use crate::{
         unified_error_response, unified_success_response, validate_content_type, validate_file_size,
         validate_json_content, FileUploadResponse, FileValidationResult,
     },
+    AppState,
 };
 use crate::error::AppError;
 
@@ -111,6 +112,14 @@ pub async fn upload_file(
         .collect();
 
     Ok(unified_success_response(responses, "Files uploaded successfully"))
+}
+
+/// Compatibility wrapper for upload_file that works with AppState
+pub async fn upload_file_compat(
+    State(app_state): State<AppState>,
+    multipart: Multipart,
+) -> Result<impl IntoResponse, AppError> {
+    upload_file(State(app_state.settings), multipart).await
 }
 
 /// Save content to a temporary file

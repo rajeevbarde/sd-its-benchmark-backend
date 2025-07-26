@@ -48,6 +48,22 @@ impl AppDetailsRepository {
 
         Ok(results)
     }
+
+    /// Clear all app details
+    pub async fn clear_all(&self) -> Result<(), Error> {
+        sqlx::query!("DELETE FROM AppDetails")
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Clear all app details within a transaction
+    pub async fn clear_all_tx(&self, tx: &mut Transaction<'_, Sqlite>) -> Result<(), Error> {
+        sqlx::query!("DELETE FROM AppDetails")
+            .execute(&mut **tx)
+            .await?;
+        Ok(())
+    }
 }
 
 #[async_trait]

@@ -30,6 +30,22 @@ impl PerformanceResultRepository {
 
         Ok(results)
     }
+
+    /// Clear all performance results
+    pub async fn clear_all(&self) -> Result<(), Error> {
+        sqlx::query!("DELETE FROM performanceResult")
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Clear all performance results within a transaction
+    pub async fn clear_all_tx(&self, tx: &mut Transaction<'_, Sqlite>) -> Result<(), Error> {
+        sqlx::query!("DELETE FROM performanceResult")
+            .execute(&mut **tx)
+            .await?;
+        Ok(())
+    }
 }
 
 #[async_trait]

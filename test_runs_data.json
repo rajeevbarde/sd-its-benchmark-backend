@@ -1,0 +1,122 @@
+[
+  {
+    "timestamp": "2024-01-01T10:00:00Z",
+    "vram_usage": "8.5/12.0/15.2",
+    "info": "app: AUTOMATIC1111 updated: 2024-01-01 hash: abc123def456 url: https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+    "system_info": "arch: x86_64 cpu: Intel(R) Core(TM) i7-10700K system: Linux release: 5.15.0 python: 3.9.7",
+    "model_info": "torch: 2.0.1 xformers: 0.0.22 diffusers: 0.21.4 transformers: 4.30.2",
+    "device_info": "device: NVIDIA GeForce RTX 3080 driver: 535.86.10 gpu_chip: GA102",
+    "xformers": "0.0.22",
+    "model_name": "stable-diffusion-v1-5",
+    "user": "testuser1",
+    "notes": "Test run 1 - AUTOMATIC1111 with RTX 3080"
+  },
+  {
+    "timestamp": "2024-01-02T11:00:00Z",
+    "vram_usage": "6.2/8.0/NaN",
+    "info": "app: vladmandic updated: 2024-01-02 hash: def456ghi789 url: https://github.com/vladmandic/automatic",
+    "system_info": "arch: x86_64 cpu: AMD Ryzen 7 5800X system: Windows release: 10.0.19045 python: 3.10.8",
+    "model_info": "torch: 2.1.0 xformers: 0.0.23 diffusers: 0.22.0 transformers: 4.31.0",
+    "device_info": "device: NVIDIA GeForce RTX 3070 Laptop driver: 536.67 gpu_chip: GA104",
+    "xformers": "0.0.23",
+    "model_name": "stable-diffusion-v2-1",
+    "user": "testuser2",
+    "notes": "Test run 2 - Vladmandic with RTX 3070 Laptop"
+  },
+  {
+    "timestamp": "2024-01-03T12:00:00Z",
+    "vram_usage": "4.8/6.0/7.5",
+    "info": "app: stable-diffusion-webui updated: 2024-01-03 hash: ghi789jkl012 url: https://github.com/CompVis/stable-diffusion-webui",
+    "system_info": "arch: x86_64 cpu: Intel Core i5-10400 system: macOS release: 13.4.1 python: 3.11.2",
+    "model_info": "torch: 1.13.1 xformers: 0.0.21 diffusers: 0.20.3 transformers: 4.29.2",
+    "device_info": "device: AMD Radeon RX 6800 XT driver: 23.5.2 gpu_chip: Navi 21",
+    "xformers": "0.0.21",
+    "model_name": "stable-diffusion-v1-4",
+    "user": "testuser3",
+    "notes": "Test run 3 - Stable Diffusion WebUI with RX 6800 XT"
+  },
+  {
+    "timestamp": "2024-01-04T13:00:00Z",
+    "vram_usage": "12.5/16.0/20.0",
+    "info": "app: null updated: 2024-01-04 hash: jkl012mno345 url: null",
+    "system_info": "arch: x86_64 cpu: Intel Core i9-12900K system: Linux release: 6.1.0 python: 3.10.9",
+    "model_info": "torch: 2.0.1 xformers: 0.0.22 diffusers: 0.21.4 transformers: 4.30.2",
+    "device_info": "device: NVIDIA GeForce RTX 4090 driver: 535.86.10 gpu_chip: AD102",
+    "xformers": "0.0.22",
+    "model_name": "stable-diffusion-v2-1",
+    "user": "testuser4",
+    "notes": "Test run 4 - High-end RTX 4090 setup"
+  },
+  {
+    "timestamp": "2024-01-05T14:00:00Z",
+    "vram_usage": "3.2/4.0/5.0",
+    "info": "app: unknown updated: 2024-01-05 hash: mno345pqr678 url: https://github.com/some-other/app",
+    "system_info": "arch: x86_64 cpu: Intel Core i3-10100 system: Windows release: 11.0.22621 python: 3.9.13",
+    "model_info": "torch: 1.12.1 xformers: 0.0.20 diffusers: 0.19.3 transformers: 4.28.1",
+    "device_info": "device: Intel UHD Graphics 630 driver: 31.0.101.3959 gpu_chip: Coffee Lake",
+    "xformers": "0.0.20",
+    "model_name": "stable-diffusion-v1-5",
+    "user": "testuser5",
+    "notes": "Test run 5 - Intel integrated graphics"
+  },
+  {
+    "timestamp": "2024-01-06T15:00:00Z",
+    "vram_usage": "7.8/10.0/12.5",
+    "info": "app: AUTOMATIC1111 updated: 2024-01-06 hash: pqr678stu901 url: https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+    "system_info": "arch: x86_64 cpu: AMD Ryzen 9 5900X system: Linux release: 5.19.0 python: 3.10.7",
+    "model_info": "torch: 2.0.1 xformers: 0.0.22 diffusers: 0.21.4 transformers: 4.30.2",
+    "device_info": "device: NVIDIA GeForce RTX 3080 Ti driver: 535.86.10 gpu_chip: GA102",
+    "xformers": "0.0.22",
+    "model_name": "stable-diffusion-v2-1",
+    "user": "testuser6",
+    "notes": "Test run 6 - RTX 3080 Ti with AUTOMATIC1111"
+  },
+  {
+    "timestamp": "2024-01-07T16:00:00Z",
+    "vram_usage": "5.5/7.0/8.5",
+    "info": "app: vladmandic updated: 2024-01-07 hash: stu901vwx234 url: https://github.com/vladmandic/automatic",
+    "system_info": "arch: x86_64 cpu: Intel Core i7-11700K system: Windows release: 10.0.19045 python: 3.11.0",
+    "model_info": "torch: 2.1.0 xformers: 0.0.23 diffusers: 0.22.0 transformers: 4.31.0",
+    "device_info": "device: NVIDIA GeForce RTX 3060 driver: 536.67 gpu_chip: GA106",
+    "xformers": "0.0.23",
+    "model_name": "stable-diffusion-v1-4",
+    "user": "testuser7",
+    "notes": "Test run 7 - RTX 3060 with Vladmandic"
+  },
+  {
+    "timestamp": "2024-01-08T17:00:00Z",
+    "vram_usage": "9.2/12.0/15.0",
+    "info": "app: stable-diffusion-webui updated: 2024-01-08 hash: vwx234yza567 url: https://github.com/CompVis/stable-diffusion-webui",
+    "system_info": "arch: x86_64 cpu: AMD Ryzen 7 7700X system: Linux release: 6.2.0 python: 3.11.3",
+    "model_info": "torch: 2.0.1 xformers: 0.0.22 diffusers: 0.21.4 transformers: 4.30.2",
+    "device_info": "device: AMD Radeon RX 7900 XTX driver: 23.7.2 gpu_chip: Navi 31",
+    "xformers": "0.0.22",
+    "model_name": "stable-diffusion-v2-1",
+    "user": "testuser8",
+    "notes": "Test run 8 - RX 7900 XTX with Stable Diffusion WebUI"
+  },
+  {
+    "timestamp": "2024-01-09T18:00:00Z",
+    "vram_usage": "2.8/3.5/4.2",
+    "info": "app: null updated: 2024-01-09 hash: yza567bcd890 url: null",
+    "system_info": "arch: x86_64 cpu: Intel Core i5-11400 system: Windows release: 11.0.22621 python: 3.10.11",
+    "model_info": "torch: 1.13.1 xformers: 0.0.21 diffusers: 0.20.3 transformers: 4.29.2",
+    "device_info": "device: NVIDIA GeForce GTX 1660 Super driver: 536.67 gpu_chip: TU116",
+    "xformers": "0.0.21",
+    "model_name": "stable-diffusion-v1-5",
+    "user": "testuser9",
+    "notes": "Test run 9 - GTX 1660 Super with null app info"
+  },
+  {
+    "timestamp": "2024-01-10T19:00:00Z",
+    "vram_usage": "11.5/14.0/17.5",
+    "info": "app: AUTOMATIC1111 updated: 2024-01-10 hash: bcd890efg123 url: https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+    "system_info": "arch: x86_64 cpu: Intel Core i9-13900K system: Linux release: 6.3.0 python: 3.11.4",
+    "model_info": "torch: 2.1.0 xformers: 0.0.23 diffusers: 0.22.0 transformers: 4.31.0",
+    "device_info": "device: NVIDIA GeForce RTX 4080 driver: 535.86.10 gpu_chip: AD103",
+    "xformers": "0.0.23",
+    "model_name": "stable-diffusion-v2-1",
+    "user": "testuser10",
+    "notes": "Test run 10 - RTX 4080 with AUTOMATIC1111"
+  }
+] 

@@ -6,6 +6,8 @@ pub mod repositories;
 pub mod services;
 pub mod middleware;
 
+use sqlx::SqlitePool;
+
 pub use config::{
     Settings,
     load_config_with_fallback,
@@ -14,3 +16,9 @@ pub use config::{
 };
 
 pub use error::{AppError};
+
+#[derive(Clone)]
+pub struct AppState {
+    pub db: SqlitePool,
+    pub settings: Settings,
+}
