@@ -8,7 +8,7 @@ use tokio::signal;
 use tracing::{info, warn};
 use dotenvy::dotenv;
 
-use sd_its_benchmark::{create_pool, DatabaseConfig, initialize_database};
+use sd_its_benchmark::{create_pool, DatabaseConfig, initialize_database, AppError, AppResult};
 
 #[derive(Clone)]
 struct AppState {
@@ -16,7 +16,7 @@ struct AppState {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> AppResult<()> {
     // Load environment variables from .env file
     dotenv().ok();
     
@@ -53,16 +53,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = std::env::var("SERVER_PORT")
         .unwrap_or_else(|_| "3002".to_string())
-        .parse::<u16>()?;
+        .parse::<u16>()
+        .map_err(|e| AppError::config(format!("Invalid port number: {}", e)))?;
     
-    let addr = SocketAddr::from((host.parse::<std::net::IpAddr>()?, port));
+    let addr = SocketAddr::from((
+        host.parse::<std::net::IpAddr>()
+            .map_err(|e| AppError::config(format!("Invalid host address: {}", e)))?,
+        port
+    ));
     info!("Server starting on {}", addr);
     
     // Start server with graceful shutdown
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let listener = tokio::net::TcpListener::bind(addr).await
+        .map_err(|e| AppError::internal(format!("Failed to bind to address: {}", e)))?;
+    
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
-        .await?;
+        .await
+        .map_err(|e| AppError::internal(format!("Server error: {}", e)))?;
     
     info!("Server shutdown complete");
     Ok(())
@@ -71,7 +79,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn health_handler() -> &'static str {
     "OK"
 }
-
 
 async fn shutdown_signal() {
     let ctrl_c = async {

@@ -15,3 +15,5 @@ pub use config::{
     get_performance_results,
     get_gpu_info,
 };
+
+pub use error::{AppError, AppResult, log_error, handle_anyhow_error};
