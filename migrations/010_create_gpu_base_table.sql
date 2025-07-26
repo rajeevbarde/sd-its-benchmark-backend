@@ -1,0 +1,6 @@
+-- Create GPUBase table
+CREATE TABLE IF NOT EXISTS GPUBase (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    brand TEXT
+);
