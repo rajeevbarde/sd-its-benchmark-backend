@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sqlx::{Error, SqlitePool, Transaction, Sqlite};
 
-use crate::models::model_map::{ModelMap, CreateModelMap};
+use crate::models::model_map::ModelMap;
 use crate::repositories::traits::{Repository, TransactionRepository};
 
 pub struct ModelMapRepository {

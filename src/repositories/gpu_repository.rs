@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sqlx::{Error, SqlitePool, Transaction, Sqlite};
 
-use crate::models::gpu::{Gpu, CreateGpu};
+use crate::models::gpu::Gpu;
 use crate::repositories::traits::{Repository, TransactionRepository};
 
 pub struct GpuRepository {

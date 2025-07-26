@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sqlx::{Error, SqlitePool, Transaction, Sqlite};
 
-use crate::models::libraries::{Libraries, CreateLibraries};
+use crate::models::libraries::Libraries;
 use crate::repositories::traits::{Repository, TransactionRepository};
 
 pub struct LibrariesRepository {

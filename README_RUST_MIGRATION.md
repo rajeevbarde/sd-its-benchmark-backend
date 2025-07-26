@@ -137,23 +137,24 @@ This document outlines the complete migration plan for converting the SD-ITS Ben
 - [x] Create query builder utilities
 
 #### 4.2 Table-Specific Repositories
-- [ ] `RunsRepository` - Main runs table operations
-- [ ] `PerformanceResultRepository` - Performance data
-- [ ] `AppDetailsRepository` - Application details
-- [ ] `SystemInfoRepository` - System information
-- [ ] `LibrariesRepository` - Library versions
-- [ ] `GpuRepository` - GPU information
-- [ ] `RunMoreDetailsRepository` - Extended run details
-- [ ] `ModelMapRepository` - Model mapping
-- [ ] `GpuMapRepository` - GPU mapping
-- [ ] `GpuBaseRepository` - Base GPU information
+- [x] `PerformanceResultRepository` - Performance data
+- [x] `AppDetailsRepository` - Application details
+- [x] `RunsRepository` - Main runs table operations
+- [x] `SystemInfoRepository` - System information
+- [x] `LibrariesRepository` - Library versions
+- [x] `GpuRepository` - GPU information
+- [x] `RunMoreDetailsRepository` - Extended run details
+- [x] `ModelMapRepository` - Model mapping
+- [x] `GpuMapRepository` - GPU mapping
+- [x] `GpuBaseRepository` - Base GPU information
 
 ### Phase 5: API Handlers Implementation
-#### 5.1 File Upload Handler
-- [ ] Implement multipart file upload support
-- [ ] Add file validation and size limits
-- [ ] Create temporary file handling
-- [ ] Implement JSON parsing from uploaded files
+#### 5.1 File Upload Handler ✅
+- [x] Implement multipart file upload support
+- [x] Add file validation and size limits
+- [x] Create temporary file handling
+- [x] Implement JSON parsing from uploaded files
+- [x] Test and verify functionality
 
 #### 5.2 Admin API Handlers
 - [ ] `/api/save-data` - Bulk data import (POST)

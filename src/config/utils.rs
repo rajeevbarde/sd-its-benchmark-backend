@@ -1,7 +1,9 @@
 use crate::config::Settings;
+use crate::config::settings::{ServerConfig, DatabaseSettings, LoggingConfig, ApplicationConfig};
 use std::path::PathBuf;
 use std::fs;
 use tracing::{info, warn};
+use config::File;
 
 /// Initialize configuration directories and files
 pub fn initialize_config_directories(settings: &Settings) -> Result<(), std::io::Error> {
@@ -123,7 +125,38 @@ pub fn load_config_with_fallback() -> Result<Settings, Box<dyn std::error::Error
         Err(e) => {
             warn!("Failed to load configuration from files: {}", e);
             warn!("Using default configuration");
-            Ok(Settings::default())
+            
+            // Create a default settings but try to preserve any valid config values
+            let mut default_settings = Settings::default();
+            
+            // Try to load partial configuration for server settings
+            if let Ok(partial_config) = config::Config::builder()
+                .add_source(File::with_name("config/default").required(false))
+                .add_source(File::with_name("config/development").required(false))
+                .build() {
+                
+                if let Ok(server_config) = partial_config.get::<ServerConfig>("server") {
+                    default_settings.server = server_config;
+                    info!("Loaded partial server configuration");
+                }
+                
+                if let Ok(database_config) = partial_config.get::<DatabaseSettings>("database") {
+                    default_settings.database = database_config;
+                    info!("Loaded partial database configuration");
+                }
+                
+                if let Ok(logging_config) = partial_config.get::<LoggingConfig>("logging") {
+                    default_settings.logging = logging_config;
+                    info!("Loaded partial logging configuration");
+                }
+                
+                if let Ok(application_config) = partial_config.get::<ApplicationConfig>("application") {
+                    default_settings.application = application_config;
+                    info!("Loaded partial application configuration");
+                }
+            }
+            
+            Ok(default_settings)
         }
     }
 }

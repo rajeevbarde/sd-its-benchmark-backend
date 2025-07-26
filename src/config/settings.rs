@@ -8,6 +8,8 @@ pub struct Settings {
     pub database: DatabaseSettings,
     pub logging: LoggingConfig,
     pub application: ApplicationConfig,
+    #[serde(default)]
+    pub file_upload: FileUploadConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +50,14 @@ pub struct ApplicationConfig {
     pub upload_dir: PathBuf,
     pub max_upload_size: usize,
     pub allowed_file_types: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileUploadConfig {
+    pub max_size_mb: usize,
+    pub allowed_content_types: Vec<String>,
+    pub temp_dir: PathBuf,
+    pub cleanup_interval_seconds: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -117,6 +127,7 @@ impl Default for Settings {
             database: DatabaseSettings::default(),
             logging: LoggingConfig::default(),
             application: ApplicationConfig::default(),
+            file_upload: FileUploadConfig::default(),
         }
     }
 }
@@ -173,6 +184,22 @@ impl Default for ApplicationConfig {
                 "txt".to_string(),
                 "csv".to_string(),
             ],
+        }
+    }
+}
+
+impl Default for FileUploadConfig {
+    fn default() -> Self {
+        Self {
+            max_size_mb: 50, // 50MB
+            allowed_content_types: vec![
+                "application/json".to_string(),
+                "text/json".to_string(),
+                "text/plain".to_string(),
+                "application/octet-stream".to_string(),
+            ],
+            temp_dir: PathBuf::from("temp"),
+            cleanup_interval_seconds: 3600, // 1 hour
         }
     }
 }

@@ -1,5 +1,5 @@
 use axum::{
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use std::net::SocketAddr;
@@ -7,6 +7,8 @@ use tracing::{info, error, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
+mod error;
+mod handlers;
 
 use crate::config::{
     load_config_with_fallback, 
@@ -68,13 +70,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize directories
     initialize_config_directories(&settings)?;
 
+    // Bind to address (capture values before moving settings)
+    let host = settings.server.host.clone();
+    let port = settings.server.port;
+    let addr = SocketAddr::from((host.parse::<std::net::IpAddr>()?, port));
+
     // Create application router
     let app = Router::new()
         .route("/health", get(health_check))
-        .route("/env", get(show_environment));
-
-    // Bind to address
-    let addr = SocketAddr::from((settings.server.host.parse::<std::net::IpAddr>()?, settings.server.port));
+        .route("/env", get(show_environment))
+        .route("/api/upload", post(handlers::upload::upload_file))
+        .with_state(settings);
     info!("Server starting on {}", addr);
 
     // Start server

@@ -1,4 +1,6 @@
-use sd_its_benchmark::config::{Settings, Environment, validate_config, get_database_url, get_log_file_path, get_config_summary};
+use sd_its_benchmark::config::{Settings, validate_config};
+use sd_its_benchmark::config::settings::Environment;
+use sd_its_benchmark::config::utils::{get_database_url, get_log_file_path, get_config_summary};
 use std::path::PathBuf;
 
 #[test]

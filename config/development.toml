@@ -23,4 +23,10 @@ file_path = "logs/dev.log"
 [application]
 environment = "development"
 upload_dir = "uploads/dev"
-max_upload_size = 104857600  # 100MB for development testing 
+max_upload_size = 104857600  # 100MB for development testing
+
+[file_upload]
+max_size_mb = 100
+allowed_content_types = ["application/json", "text/json", "text/plain", "application/octet-stream"]
+temp_dir = "temp/dev"
+cleanup_interval_seconds = 1800 

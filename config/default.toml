@@ -31,4 +31,10 @@ version = "0.1.0"
 environment = "development"
 upload_dir = "uploads"
 max_upload_size = 52428800  # 50MB in bytes
-allowed_file_types = ["json", "txt", "csv"] 
+allowed_file_types = ["json", "txt", "csv"]
+
+[file_upload]
+max_size_mb = 50
+allowed_content_types = ["application/json", "text/json", "text/plain", "application/octet-stream"]
+temp_dir = "temp"
+cleanup_interval_seconds = 3600 
