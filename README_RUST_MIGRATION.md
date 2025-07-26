@@ -43,20 +43,20 @@ This document outlines the complete migration plan for converting the SD-ITS Ben
 - [x] Set up basic `Cargo.toml` with workspace configuration
 
 #### 1.2 Dependencies Configuration
-- [ ] Add Axum web framework dependencies
-- [ ] Add SQLx with SQLite support and runtime features
-- [ ] Add Tokio async runtime
-- [ ] Add Serde for JSON serialization/deserialization
-- [ ] Add additional utilities:
-  - [ ] `uuid` for ID generation
-  - [ ] `chrono` for date/time handling
-  - [ ] `anyhow`/`thiserror` for error handling
-  - [ ] `tracing` for logging
-  - [ ] `tower` for middleware
-  - [ ] `tower-http` for HTTP middleware
+- [x] Add Axum web framework dependencies
+- [x] Add SQLx with SQLite support and runtime features
+- [x] Add Tokio async runtime
+- [x] Add Serde for JSON serialization/deserialization
+- [x] Add additional utilities:
+  - [x] `uuid` for ID generation
+  - [x] `chrono` for date/time handling
+  - [x] `anyhow`/`thiserror` for error handling
+  - [x] `tracing` for logging
+  - [x] `tower` for middleware
+  - [x] `tower-http` for HTTP middleware
 
 #### 1.3 Project Structure Setup
-- [ ] Create modular project structure:
+- [x] Create modular project structure:
   ```
   src/
   ├── main.rs

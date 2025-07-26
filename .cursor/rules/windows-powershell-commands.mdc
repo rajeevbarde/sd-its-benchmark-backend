@@ -1,0 +1,84 @@
+# Windows 11 PowerShell Commands Rule
+
+## Important: Always Provide PowerShell Commands
+
+**User Environment:** Windows 11 with PowerShell as the default shell
+
+### Command Format Requirements:
+- **ALWAYS** provide PowerShell commands instead of bash commands
+- Use `New-Item` instead of `mkdir` for creating files/directories
+- Use `Remove-Item` instead of `rm` for deleting files
+- Use `Copy-Item` instead of `cp` for copying files
+- Use `Move-Item` instead of `mv` for moving files
+- Use `Get-Content` instead of `cat` for viewing files
+- Use `Set-Content` or `Add-Content` instead of `echo` for writing to files
+
+### PowerShell Command Examples:
+
+#### File/Directory Creation:
+```powershell
+# Create directory
+New-Item -Path "src\config" -ItemType Directory -Force
+
+# Create file
+New-Item -Path "src\config\mod.rs" -ItemType File -Force
+
+# Create multiple files
+"config","handlers","models" | ForEach-Object { New-Item -Path "src\$_\mod.rs" -ItemType File -Force }
+```
+
+#### File Operations:
+```powershell
+# Copy file
+Copy-Item "source.txt" "destination.txt"
+
+# Move file
+Move-Item "old.txt" "new.txt"
+
+# Delete file
+Remove-Item "file.txt" -Force
+
+# View file content
+Get-Content "file.txt"
+```
+
+#### Writing to Files:
+```powershell
+# Write content to file
+Set-Content -Path "file.txt" -Value "content"
+
+# Append content to file
+Add-Content -Path "file.txt" -Value "additional content"
+
+# Create empty file
+echo $null > "file.txt"
+```
+
+### Rust/Cargo Commands:
+- Cargo commands remain the same: `cargo add`, `cargo check`, `cargo build`
+- Always provide PowerShell syntax for file operations around Cargo commands
+
+### Error Handling:
+- Use `-ErrorAction SilentlyContinue` for operations that might fail
+- Use `-Force` flag when appropriate to avoid confirmation prompts
+
+### Never Use:
+- ❌ `mkdir` (use `New-Item -ItemType Directory`)
+- ❌ `rm` (use `Remove-Item`)
+- ❌ `cp` (use `Copy-Item`)
+- ❌ `mv` (use `Move-Item`)
+- ❌ `cat` (use `Get-Content`)
+- ❌ `echo "text" > file` (use `Set-Content`)
+
+### Always Use:
+- ✅ `New-Item` for creation
+- ✅ `Remove-Item` for deletion
+- ✅ `Copy-Item` for copying
+- ✅ `Move-Item` for moving
+- ✅ `Get-Content` for viewing
+- ✅ `Set-Content` for writing
+- ✅ PowerShell syntax and operators
+description:
+globs:
+alwaysApply: false
+---
