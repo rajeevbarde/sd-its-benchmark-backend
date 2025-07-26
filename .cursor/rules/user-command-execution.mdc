@@ -1,60 +1,89 @@
 # User Command Execution Rule
 
-## Important: All Command Line Execution Must Be Done By User
+## Important: User Executes Only System/Execution Commands
 
-**NEVER** execute any commands automatically. Instead, provide the commands to the user for manual execution.
+**User Responsibility:** Execute only commands that involve system operations, processes, or execution
 
-### Core Principle
-- Cursor should **ONLY** provide commands and instructions
-- The user must **ALWAYS** execute commands themselves
-- This ensures user control and awareness of all system changes
+### User Should Execute:
+- **System Commands:**
+  - `cargo check` - Compile verification
+  - `cargo build` - Build the project
+  - `cargo run` - Run the application
+  - `cargo test` - Run tests
+  - `cargo add <package>` - Add dependencies
 
-### What Cursor Should Do
-- Analyze the task and determine required commands
-- Present clear, complete commands to the user
-- Explain what each command does
-- Provide step-by-step instructions when needed
-- Wait for user confirmation before proceeding
+- **Process Management:**
+  - `taskkill` - Kill processes
+  - `netstat` - Network statistics
+  - `Get-Process` - Process information
+  - `Stop-Process` - Stop processes
+  - `Start-Process` - Start processes
 
-### What Cursor Should NOT Do
-- Execute commands automatically using terminal tools
-- Run scripts without explicit user approval
-- Make system changes without user oversight
-- Assume user wants immediate execution
+- **Server Operations:**
+  - `cargo run --release` - Production build
+  - `cargo install` - Install binaries
+  - `sqlx migrate run` - Run database migrations
+  - `sqlx migrate revert` - Revert migrations
 
-### Command Presentation Format
-When providing commands, use this format:
+- **Development Tools:**
+  - `rustup update` - Update Rust toolchain
+  - `cargo update` - Update dependencies
+  - `cargo clean` - Clean build artifacts
+
+### AI Can Handle:
+- ✅ **File Creation/Modification:**
+  - Creating new Rust files
+  - Updating existing code
+  - Writing structs, functions, modules
+  - Adding imports and dependencies
+
+- ✅ **Configuration Files:**
+  - Updating `Cargo.toml`
+  - Creating `.env` files
+  - Writing configuration code
+  - Setting up module declarations
+
+- ✅ **Documentation:**
+  - Updating README files
+  - Adding comments to code
+  - Creating documentation
+  - Updating migration checklists
+
+- ✅ **Project Structure:**
+  - Creating directories
+  - Setting up module structure
+  - Organizing code files
+  - Managing project layout
+
+### Examples:
+
+**User Executes:**
+```powershell
+cargo check
+cargo run
+taskkill /F /IM rust.exe
 ```
-**Command to run:**
-```bash
-your-command-here
+
+**AI Handles:**
+```powershell
+# AI provides these commands for user to run
+New-Item -Path "src\models\runs.rs" -ItemType File -Force
+Set-Content -Path "src\models\runs.rs" -Value "// Rust code here"
 ```
 
-**What this does:**
-[Explanation of what the command will accomplish]
+### Workflow:
+1. **AI provides PowerShell commands** for file operations
+2. **User runs execution commands** like `cargo check`, `cargo run`
+3. **AI handles all code changes** and file updates
+4. **User only executes** system-level commands
 
-**Next steps:**
-[What the user should do after running this command]
-```
+### Never Ask User To:
+- ❌ Write code manually
+- ❌ Create files manually
+- ❌ Update README manually
+- ❌ Modify configuration files manually
 
-### Exception Handling
-- Only in emergency situations (with clear explanation)
-- When explicitly requested by user for automation
-- For read-only operations that cannot cause harm
-
-### User Control
-- Always ask for user approval before suggesting complex commands
-- Provide alternatives when possible
-- Explain risks and benefits of each command
-- Allow user to modify commands before execution
-
-### Compliance
-Before suggesting any command execution, ensure:
-1. User understands what the command will do
-2. User has the option to modify or reject the command
-3. User maintains full control over their system
-4. All potential risks are clearly communicated
-description:
-globs:
-alwaysApply: false
----
+### Always Provide:
+- ✅ Complete PowerShell commands for file operations
+- ✅ Ready-to-run code snippets
+- ✅ Clear instructions for execution commands

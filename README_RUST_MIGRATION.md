@@ -87,6 +87,8 @@ This document outlines the complete migration plan for converting the SD-ITS Ben
   - [x] `009_create_gpu_map_table.sql`
   - [x] `010_create_gpu_base_table.sql`
   - [x] `011_create_indexes.sql`
+- [x] Set up SQLx CLI and run migrations
+- [x] Verify all tables are created successfully
 
 #### 2.2 Database Models & Types
 - [x] Create Rust structs for each database table
@@ -103,10 +105,10 @@ This document outlines the complete migration plan for converting the SD-ITS Ben
 
 ### Phase 3: Core Application Infrastructure
 #### 3.1 Application Bootstrap
-- [ ] Create main application entry point
-- [ ] Set up Tokio runtime configuration
-- [ ] Implement graceful shutdown handling
-- [ ] Add application state management
+- [x] Create main application entry point
+- [x] Set up Tokio runtime configuration
+- [x] Implement graceful shutdown handling
+- [x] Add application state management
 
 #### 3.2 Error Handling System
 - [ ] Design comprehensive error types
@@ -323,6 +325,91 @@ This document outlines the complete migration plan for converting the SD-ITS Ben
 3. **Begin Phase 1** - Start with project initialization
 4. **Regular Progress Reviews** - Weekly progress check-ins
 5. **Risk Assessment Updates** - Continuous risk evaluation
+
+---
+
+## SQLx Commands Reference
+
+### Database Management Commands
+
+#### Installation:
+```powershell
+# Install SQLx CLI with SQLite support
+cargo install sqlx-cli --no-default-features --features sqlite
+```
+
+#### Migration Commands:
+```powershell
+# Create a new migration
+sqlx migrate add <migration_name>
+
+# Run all pending migrations
+sqlx migrate run
+
+# Revert the last migration
+sqlx migrate revert
+
+# Check migration status
+sqlx migrate info
+
+# Generate migration files from existing database
+sqlx migrate info --connect <database_url>
+```
+
+#### Database Commands:
+```powershell
+# Create database (if it doesn't exist)
+sqlx database create
+
+# Drop database
+sqlx database drop
+
+# Reset database (drop and recreate)
+sqlx database reset
+```
+
+#### Development Commands:
+```powershell
+# Generate sqlx-data.json for offline compilation
+cargo sqlx prepare
+
+# Check SQL queries at compile time
+cargo sqlx check
+
+# Run with database connection check
+cargo sqlx run
+```
+
+#### Debugging Commands:
+```powershell
+# Check database schema
+sqlite3 my-database.db ".schema"
+
+# List all tables
+sqlite3 my-database.db ".tables"
+
+# Execute custom SQL
+sqlite3 my-database.db "SELECT * FROM runs LIMIT 5;"
+```
+
+### Common Workflows
+
+#### Adding a New Table:
+1. `sqlx migrate add create_new_table`
+2. Edit the generated migration file
+3. `sqlx migrate run`
+4. `cargo sqlx prepare` (optional)
+
+#### Debugging Database Issues:
+1. `sqlx migrate info` - Check migration status
+2. `sqlite3 my-database.db ".tables"` - List tables
+3. `sqlite3 my-database.db ".schema"` - Check schema
+4. `cargo check` - Verify SQL queries
+
+#### Production Deployment:
+1. `cargo sqlx prepare` - Generate offline data
+2. `cargo build --release` - Build with offline support
+3. `sqlx migrate run` - Run migrations on production DB
 
 ---
 
