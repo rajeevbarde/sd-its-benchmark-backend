@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO performanceResult (run_id, its, avg_its)\n            VALUES (?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "70027ea53944c34b30aa7f601e499d8852ed88ee757cef536ea970d02bbd5ec7"
+}

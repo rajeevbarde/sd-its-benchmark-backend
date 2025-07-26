@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE performanceResult\n            SET run_id = ?, its = ?, avg_its = ?\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "6655bc151cd860862e75137457c0782740425ca8dde85567f70bd582457dff49"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO runs (timestamp, vram_usage, info, system_info, model_info, device_info, xformers, model_name, user, notes)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "7fe787597b800e4d2475a070321858f7001377235f710966fc8dadd353655473"
+}

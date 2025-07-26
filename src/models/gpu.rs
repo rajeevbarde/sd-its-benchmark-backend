@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Gpu {
-    pub id: Option<i32>,
-    pub run_id: i32,
+    pub id: Option<i64>,
+    pub run_id: Option<i64>,
     pub device: Option<String>,
     pub driver: Option<String>,
     pub gpu_chip: Option<String>,
@@ -14,7 +14,7 @@ pub struct Gpu {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGpu {
-    pub run_id: i32,
+    pub run_id: i64,
     pub device: String,
     pub driver: String,
     pub gpu_chip: String,

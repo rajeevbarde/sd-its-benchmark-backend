@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, run_id, its, avg_its\n            FROM performanceResult\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "run_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "its",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "avg_its",
+        "ordinal": 3,
+        "type_info": "Float"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "27d6d300055de6a8ea75ee881f6ce87b9852c999a7e611a5d5268421773dcfb0"
+}

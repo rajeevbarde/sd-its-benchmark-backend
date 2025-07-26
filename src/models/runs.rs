@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Run {
-    pub id: Option<i32>,
+    pub id: Option<i64>,
     pub timestamp: Option<String>,
     pub vram_usage: Option<String>,
     pub info: Option<String>,

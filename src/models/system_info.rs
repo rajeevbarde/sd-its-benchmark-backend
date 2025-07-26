@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SystemInfo {
-    pub id: Option<i32>,
-    pub run_id: i32,
+    pub id: Option<i64>,
+    pub run_id: Option<i64>,
     pub arch: Option<String>,
     pub cpu: Option<String>,
     pub system: Option<String>,
@@ -14,7 +14,7 @@ pub struct SystemInfo {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateSystemInfo {
-    pub run_id: i32,
+    pub run_id: i64,
     pub arch: String,
     pub cpu: String,
     pub system: String,

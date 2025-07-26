@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE runs\n            SET timestamp = ?, vram_usage = ?, info = ?, system_info = ?, model_info = ?, device_info = ?, xformers = ?, model_name = ?, user = ?, notes = ?\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "c5a3d75576a1b9c3348deee8e45beb77e833837eab3dcdf678198c0dedcfdfb5"
+}

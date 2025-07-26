@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, timestamp, vram_usage, info, system_info, model_info, device_info, xformers, model_name, user, notes\n            FROM runs\n            ORDER BY id DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "timestamp",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "vram_usage",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "info",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "system_info",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "model_info",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "device_info",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "xformers",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "model_name",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "user",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "notes",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "075751ab3b87eaa04048ae6550beeec6891c33fe641511ef4affd0401817d41a"
+}
