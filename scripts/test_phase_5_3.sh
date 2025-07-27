@@ -4,7 +4,7 @@
 # Tests the new standardized response formats and validation features
 
 BASE_URL="http://localhost:4000"
-TEST_DATA_FILE="test_runs_data.json"
+TEST_DATA_FILE="../test_data/test_runs_data.json"
 
 echo "🧪 Phase 5.3: Request/Response Handling Tests"
 echo "============================================="
