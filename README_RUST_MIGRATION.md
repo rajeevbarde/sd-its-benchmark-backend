@@ -191,12 +191,13 @@ This document outlines the complete migration plan for converting the SD-ITS Ben
 - [x] Port `fixAppNamesController` logic → `FixAppNamesService`
 - [x] Port `updateRunMoreDetailsWithModelMapIdController` logic → `UpdateRunMoreDetailsService`
 
-#### 6.2 Data Parsing & Transformation
-- [ ] Implement system info parsing logic
-- [ ] Implement app details parsing logic
-- [ ] Implement GPU data parsing logic
-- [ ] Implement library version parsing logic
-- [ ] Add data validation and sanitization
+#### 6.2 Data Parsing & Transformation ✅
+- [x] Implement system info parsing logic
+- [x] Implement app details parsing logic
+- [x] Implement GPU data parsing logic
+- [x] Implement library version parsing logic
+- [x] Implement performance data (ITS) parsing logic
+- [x] Add data validation and sanitization
 
 #### 6.3 Transaction Management
 - [ ] Implement bulk insert operations with transactions

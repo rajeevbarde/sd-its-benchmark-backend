@@ -4,7 +4,6 @@ use crate::{
     error::types::AppError,
     repositories::{
         app_details_repository::AppDetailsRepository,
-        traits::Repository,
     },
 };
 

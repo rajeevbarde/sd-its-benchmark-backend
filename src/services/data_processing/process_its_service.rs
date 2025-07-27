@@ -8,6 +8,7 @@ use crate::{
         runs_repository::RunsRepository,
         traits::Repository,
     },
+    services::parsers::PerformanceParser,
 };
 
 #[derive(Debug)]
@@ -122,23 +123,20 @@ impl ProcessItsService {
 
         info!("Processing run {} of {} (ID: {})", index + 1, index + 1, run_id);
 
-        // Parse ITS values from vram_usage string
-        let its_values = self.parse_its_values(vram_usage);
+        // Parse ITS values using the PerformanceParser
+        let performance_data = PerformanceParser::parse(vram_usage);
 
-        // Calculate average ITS
-        let avg_its = if its_values.is_empty() {
-            None
-        } else {
-            let sum: f64 = its_values.iter().sum();
-            Some(sum / its_values.len() as f64)
-        };
+        // Validate the parsed data
+        if !PerformanceParser::is_valid(&performance_data) {
+            warn!("Invalid performance data for run {}: {}", run_id, vram_usage);
+        }
 
         // Create performance result
         let performance_result = PerformanceResult {
             id: None,
             run_id: Some(run_id),
             its: Some(vram_usage.clone()),
-            avg_its,
+            avg_its: performance_data.avg_its,
         };
 
         // Insert into database
@@ -148,33 +146,12 @@ impl ProcessItsService {
                 AppError::internal(format!("Failed to insert performance result: {}", e))
             })?;
 
-        info!("Processed run {} with average ITS: {}", index + 1, avg_its.unwrap_or(0.0));
+        info!("Processed run {} with average ITS: {}", 
+            index + 1, 
+            performance_data.avg_its.unwrap_or(0.0)
+        );
 
         Ok(())
-    }
-
-    /// Parse ITS values from vram_usage string
-    /// 
-    /// The vram_usage string format is typically: "value1/value2/value3"
-    /// 
-    /// # Arguments
-    /// * `vram_usage` - The vram_usage string to parse
-    /// 
-    /// # Returns
-    /// * `Vec<f64>` - Vector of parsed ITS values
-    fn parse_its_values(&self, vram_usage: &str) -> Vec<f64> {
-        vram_usage
-            .split('/')
-            .filter_map(|value| {
-                let trimmed = value.trim();
-                if trimmed.is_empty() {
-                    None
-                } else {
-                    // Parse the value and filter out NaN
-                    trimmed.parse::<f64>().ok().filter(|&x| !x.is_nan())
-                }
-            })
-            .collect()
     }
 }
 
