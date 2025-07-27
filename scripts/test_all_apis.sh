@@ -4,7 +4,7 @@
 # Tests all 12 admin APIs in sequence
 
 BASE_URL="http://localhost:4000"
-TEST_DATA_FILE="../test_data/test_runs_data.json"
+TEST_DATA_FILE="test_data/test_runs_data.json"
 
 echo "🚀 Starting Comprehensive API Tests for SD-ITS-Benchmark"
 echo "=================================================="

@@ -48,6 +48,25 @@ impl ModelMapRepository {
 
         Ok(results)
     }
+
+    /// Find a single model map by model_name (returns first match)
+    pub async fn find_single_by_model_name(&self, model_name: &str) -> Result<Option<ModelMap>, Error> {
+        let result = sqlx::query_as!(
+            ModelMap,
+            r#"
+            SELECT id, model_name, base_model
+            FROM ModelMap
+            WHERE model_name = ?
+            ORDER BY id DESC
+            LIMIT 1
+            "#,
+            model_name
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(result)
+    }
 }
 
 #[async_trait]

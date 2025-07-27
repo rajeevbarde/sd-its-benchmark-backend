@@ -82,6 +82,23 @@ impl RunMoreDetailsRepository {
             .await?;
         Ok(())
     }
+
+    /// Find all RunMoreDetails records that don't have ModelMapId filled
+    pub async fn find_without_modelmapid(&self) -> Result<Vec<RunMoreDetails>, Error> {
+        let results = sqlx::query_as!(
+            RunMoreDetails,
+            r#"
+            SELECT id, run_id, timestamp, model_name, user, notes, ModelMapId as "model_map_id"
+            FROM RunMoreDetails
+            WHERE ModelMapId IS NULL
+            ORDER BY id DESC
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(results)
+    }
 }
 
 #[async_trait]

@@ -64,6 +64,102 @@ impl AppDetailsRepository {
             .await?;
         Ok(())
     }
+
+    /// Count records where both app_name and url are NULL
+    pub async fn count_null_app_name_null_url(&self) -> Result<i64, Error> {
+        let count = sqlx::query!(
+            r#"
+            SELECT COUNT(*) as count
+            FROM AppDetails
+            WHERE app_name IS NULL AND url IS NULL
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?
+        .count;
+
+        Ok(count)
+    }
+
+    /// Count records where app_name is NULL but url is NOT NULL
+    pub async fn count_null_app_name_non_null_url(&self) -> Result<i64, Error> {
+        let count = sqlx::query!(
+            r#"
+            SELECT COUNT(*) as count
+            FROM AppDetails
+            WHERE app_name IS NULL AND url IS NOT NULL
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?
+        .count;
+
+        Ok(count)
+    }
+
+    /// Update app names for AUTOMATIC1111 URLs
+    pub async fn update_automatic1111_names(&self, app_name: &str) -> Result<i64, Error> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE AppDetails
+            SET app_name = ?
+            WHERE url LIKE '%AUTOMATIC1111%'
+            "#,
+            app_name
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+
+    /// Update app names for vladmandic URLs (only if app_name is NULL or empty)
+    pub async fn update_vladmandic_names(&self, app_name: &str) -> Result<i64, Error> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE AppDetails
+            SET app_name = ?
+            WHERE url LIKE '%vladmandic%' AND (app_name IS NULL OR app_name = '')
+            "#,
+            app_name
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+
+    /// Update app names for stable-diffusion-webui URLs (only if app_name is NULL)
+    pub async fn update_stable_diffusion_names(&self, app_name: &str) -> Result<i64, Error> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE AppDetails
+            SET app_name = ?
+            WHERE url LIKE '%stable-diffusion-webui%' AND app_name IS NULL
+            "#,
+            app_name
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+
+    /// Update app names for records with both app_name and url as NULL
+    pub async fn update_null_app_name_null_url_names(&self, app_name: &str) -> Result<i64, Error> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE AppDetails
+            SET app_name = ?
+            WHERE app_name IS NULL AND url IS NULL
+            "#,
+            app_name
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
 }
 
 #[async_trait]

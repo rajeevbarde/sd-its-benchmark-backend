@@ -177,19 +177,19 @@ This document outlines the complete migration plan for converting the SD-ITS Ben
 - [x] Success response standardization
 
 ### Phase 6: Business Logic Migration
-#### 6.1 Data Processing Services
-- [ ] Port `saveDataController` logic
-- [ ] Port `processItsController` logic
-- [ ] Port `processAppDetailsController` logic
-- [ ] Port `processSystemInfoController` logic
-- [ ] Port `processLibrariesController` logic
-- [ ] Port `processGpuController` logic
-- [ ] Port `updateGpuBrandsController` logic
-- [ ] Port `updateGpuLaptopInfoController` logic
-- [ ] Port `processRunDetailsController` logic
-- [ ] Port `analyzeAppDetailsController` logic
-- [ ] Port `fixAppNamesController` logic
-- [ ] Port `updateRunMoreDetailsWithModelMapIdController` logic
+#### 6.1 Data Processing Services ✅
+- [x] Port `saveDataController` logic → `SaveDataService`
+- [x] Port `processItsController` logic → `ProcessItsService`
+- [x] Port `processAppDetailsController` logic → `ProcessAppDetailsService`
+- [x] Port `processSystemInfoController` logic → `ProcessSystemInfoService`
+- [x] Port `processLibrariesController` logic → `ProcessLibrariesService`
+- [x] Port `processGpuController` logic → `ProcessGpuService`
+- [x] Port `updateGpuBrandsController` logic → `UpdateGpuBrandsService`
+- [x] Port `updateGpuLaptopInfoController` logic → `UpdateGpuLaptopInfoService`
+- [x] Port `processRunDetailsController` logic → `ProcessRunDetailsService`
+- [x] Port `analyzeAppDetailsController` logic → `AnalyzeAppDetailsService`
+- [x] Port `fixAppNamesController` logic → `FixAppNamesService`
+- [x] Port `updateRunMoreDetailsWithModelMapIdController` logic → `UpdateRunMoreDetailsService`
 
 #### 6.2 Data Parsing & Transformation
 - [ ] Implement system info parsing logic
