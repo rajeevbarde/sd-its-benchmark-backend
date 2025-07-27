@@ -97,9 +97,9 @@ async fn test_save_data_success() {
     let response_json: Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_json["success"], true);
-    assert_eq!(response_json["total_rows"], 2);
-    assert_eq!(response_json["inserted_rows"], 2);
-    assert_eq!(response_json["error_rows"], 0);
+    assert_eq!(response_json["rows_processed"], 2);
+    assert_eq!(response_json["rows_inserted"], 2);
+    assert_eq!(response_json["rows_failed"], 0);
 
     // Verify data was actually saved
     let runs_repo = RunsRepository::new(app_state.db.clone());
@@ -252,7 +252,7 @@ async fn test_save_data_empty_array() {
     let response_json: Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_json["success"], true);
-    assert_eq!(response_json["total_rows"], 0);
-    assert_eq!(response_json["inserted_rows"], 0);
-    assert_eq!(response_json["error_rows"], 0);
+    assert_eq!(response_json["rows_processed"], 0);
+    assert_eq!(response_json["rows_inserted"], 0);
+    assert_eq!(response_json["rows_failed"], 0);
 }

@@ -13,7 +13,7 @@ use sd_its_benchmark::{
     repositories::{
         gpu_repository::GpuRepository,
         runs_repository::RunsRepository,
-        traits::{Repository, TransactionRepository},
+        traits::Repository,
     },
 };
 

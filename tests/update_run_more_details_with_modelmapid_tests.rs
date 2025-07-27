@@ -155,7 +155,7 @@ async fn setup_test_data(pool: &SqlitePool) -> (Vec<RunMoreDetails>, Vec<ModelMa
 #[tokio::test]
 async fn test_update_run_more_details_with_modelmapid_success() {
     let pool = create_test_pool().await;
-    let (test_run_more_details, test_model_maps) = setup_test_data(&pool).await;
+    let (test_run_more_details, _test_model_maps) = setup_test_data(&pool).await;
     assert!(!test_run_more_details.is_empty(), "Test data setup failed");
 
     let app_state = AppState { 

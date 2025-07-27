@@ -1,8 +1,9 @@
-pub mod logging;
 pub mod cors;
-pub mod timeout;
-pub mod size_limit;
+pub mod logging;
 pub mod security_headers;
+pub mod size_limit;
+pub mod timeout;
+pub mod validation;
 
 use axum::Router;
 
@@ -29,4 +30,4 @@ pub fn apply_middleware(router: Router) -> Router {
             HeaderName::from_static("x-xss-protection"),
             |_: &_| Some(HeaderValue::from_static("1; mode=block")),
         ))
-}
+} 

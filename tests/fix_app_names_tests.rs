@@ -8,7 +8,8 @@ use tower::ServiceExt;
 
 use sd_its_benchmark::{
     AppState,
-    handlers::admin::{fix_app_names, FixAppNamesRequest},
+    handlers::admin::fix_app_names,
+    handlers::validation::FixAppNamesRequest,
     models::{app_details::AppDetails, runs::Run},
     repositories::{
         app_details_repository::AppDetailsRepository,
@@ -200,11 +201,19 @@ async fn test_fix_app_names_success() {
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    // Verify response structure
-    assert_eq!(response_json["message"], "App names updated successfully");
-    assert!(response_json["updated_counts"].is_object());
+    // Verify standardized response structure
+    assert!(response_json["success"].is_boolean());
+    assert!(response_json["message"].is_string());
+    assert!(response_json["data"].is_object());
+    assert!(response_json["timestamp"].is_string());
+    assert!(response_json["status_code"].is_number());
 
-    let updated_counts = &response_json["updated_counts"];
+    // Verify data structure
+    let data = &response_json["data"];
+    assert!(data["message"].is_string());
+    assert!(data["updated_counts"].is_object());
+
+    let updated_counts = &data["updated_counts"];
     assert!(updated_counts["automatic1111"].is_number());
     assert!(updated_counts["vladmandic"].is_number());
     assert!(updated_counts["stable_diffusion"].is_number());
@@ -284,8 +293,16 @@ async fn test_fix_app_names_no_matches() {
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
+    // Verify standardized response structure
+    assert!(response_json["success"].is_boolean());
+    assert!(response_json["message"].is_string());
+    assert!(response_json["data"].is_object());
+    assert!(response_json["timestamp"].is_string());
+    assert!(response_json["status_code"].is_number());
+
     // Verify all counts are zero when no matches exist
-    let updated_counts = &response_json["updated_counts"];
+    let data = &response_json["data"];
+    let updated_counts = &data["updated_counts"];
     assert_eq!(updated_counts["automatic1111"], 0);
     assert_eq!(updated_counts["vladmandic"], 0);
     assert_eq!(updated_counts["stable_diffusion"], 0);
@@ -324,11 +341,19 @@ async fn test_fix_app_names_response_format() {
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    // Verify response structure
-    assert_eq!(response_json["message"], "App names updated successfully");
-    assert!(response_json["updated_counts"].is_object());
+    // Verify standardized response structure
+    assert!(response_json["success"].is_boolean());
+    assert!(response_json["message"].is_string());
+    assert!(response_json["data"].is_object());
+    assert!(response_json["timestamp"].is_string());
+    assert!(response_json["status_code"].is_number());
 
-    let updated_counts = &response_json["updated_counts"];
+    // Verify data structure
+    let data = &response_json["data"];
+    assert!(data["message"].is_string());
+    assert!(data["updated_counts"].is_object());
+
+    let updated_counts = &data["updated_counts"];
     assert!(updated_counts["automatic1111"].is_number());
     assert!(updated_counts["vladmandic"].is_number());
     assert!(updated_counts["stable_diffusion"].is_number());
@@ -439,7 +464,15 @@ async fn test_fix_app_names_edge_cases() {
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    let updated_counts = &response_json["updated_counts"];
+    // Verify standardized response structure
+    assert!(response_json["success"].is_boolean());
+    assert!(response_json["message"].is_string());
+    assert!(response_json["data"].is_object());
+    assert!(response_json["timestamp"].is_string());
+    assert!(response_json["status_code"].is_number());
+
+    let data = &response_json["data"];
+    let updated_counts = &data["updated_counts"];
     
     // Only the empty string app_name should be updated by vladmandic rule
     assert_eq!(updated_counts["automatic1111"], 0);

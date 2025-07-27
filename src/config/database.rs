@@ -62,7 +62,7 @@ pub async fn health_check(pool: &SqlitePool) -> Result<(), sqlx::Error> {
 }
 
 pub async fn initialize_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
-    // Create tables if they don't exist
+    // Create runs table
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS runs (
@@ -80,6 +80,141 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
         )
         "#
     ).execute(pool).await?;
+
+    // Create performanceResult table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS performanceResult (
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER,
+            its TEXT,
+            avg_its REAL,
+            FOREIGN KEY (run_id) REFERENCES runs(id)
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create AppDetails table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS AppDetails (
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER,
+            app_name TEXT,
+            updated TEXT,
+            hash TEXT,
+            url TEXT,
+            FOREIGN KEY (run_id) REFERENCES runs(id)
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create SystemInfo table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS SystemInfo (
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER,
+            arch TEXT,
+            cpu TEXT,
+            system TEXT,
+            release TEXT,
+            python TEXT,
+            FOREIGN KEY (run_id) REFERENCES runs(id)
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create Libraries table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS Libraries (
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER,
+            torch TEXT,
+            xformers TEXT,
+            xformers1 TEXT,
+            diffusers TEXT,
+            transformers TEXT,
+            FOREIGN KEY (run_id) REFERENCES runs(id)
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create GPU table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS GPU (
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER,
+            device TEXT,
+            driver TEXT,
+            gpu_chip TEXT,
+            brand TEXT,
+            isLaptop BOOLEAN,
+            FOREIGN KEY (run_id) REFERENCES runs(id)
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create RunMoreDetails table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS RunMoreDetails (
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER,
+            timestamp TEXT,
+            model_name TEXT,
+            user TEXT,
+            notes TEXT,
+            ModelMapId INTEGER,
+            FOREIGN KEY (run_id) REFERENCES runs(id)
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create ModelMap table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS ModelMap (
+            id INTEGER PRIMARY KEY,
+            model_name TEXT,
+            base_model TEXT
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create GPUMap table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS GPUMap (
+            id INTEGER PRIMARY KEY,
+            gpu_name TEXT,
+            base_gpu_id INTEGER REFERENCES GPUBase(id)
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create GPUBase table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS GPUBase (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            brand TEXT
+        )
+        "#
+    ).execute(pool).await?;
+
+    // Create indexes
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_performanceResult_run_id ON performanceResult (run_id)").execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_AppDetails_run_id ON AppDetails (run_id)").execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_SystemInfo_run_id ON SystemInfo (run_id)").execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_Libraries_run_id ON Libraries (run_id)").execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_GPU_run_id ON GPU (run_id)").execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_GPU_device ON GPU (device)").execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_RunMoreDetails_run_id ON RunMoreDetails (run_id)").execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_RunMoreDetails_model_name ON RunMoreDetails (model_name)").execute(pool).await?;
     
     Ok(())
 }

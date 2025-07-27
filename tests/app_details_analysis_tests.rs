@@ -192,15 +192,23 @@ async fn test_app_details_analysis_success() {
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    // Verify response structure
-    assert!(response_json["total_rows"].is_number());
-    assert!(response_json["null_app_name_null_url"].is_number());
-    assert!(response_json["null_app_name_non_null_url"].is_number());
+    // Verify standardized response structure
+    assert!(response_json["success"].is_boolean());
+    assert!(response_json["message"].is_string());
+    assert!(response_json["data"].is_object());
+    assert!(response_json["timestamp"].is_string());
+    assert!(response_json["status_code"].is_number());
+
+    // Verify data structure
+    let data = &response_json["data"];
+    assert!(data["total_rows"].is_number());
+    assert!(data["null_app_name_null_url"].is_number());
+    assert!(data["null_app_name_non_null_url"].is_number());
 
     // Verify the counts match our test data
-    let total_rows = response_json["total_rows"].as_u64().unwrap();
-    let null_app_name_null_url = response_json["null_app_name_null_url"].as_u64().unwrap();
-    let null_app_name_non_null_url = response_json["null_app_name_non_null_url"].as_u64().unwrap();
+    let total_rows = data["total_rows"].as_u64().unwrap();
+    let null_app_name_null_url = data["null_app_name_null_url"].as_u64().unwrap();
+    let null_app_name_non_null_url = data["null_app_name_non_null_url"].as_u64().unwrap();
 
     assert_eq!(total_rows, test_app_details.len() as u64);
     assert_eq!(null_app_name_null_url, 1); // Only one record has both app_name and url as NULL
@@ -230,10 +238,18 @@ async fn test_app_details_analysis_with_no_data() {
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
+    // Verify standardized response structure
+    assert!(response_json["success"].is_boolean());
+    assert!(response_json["message"].is_string());
+    assert!(response_json["data"].is_object());
+    assert!(response_json["timestamp"].is_string());
+    assert!(response_json["status_code"].is_number());
+
     // Verify all counts are zero when no data exists
-    assert_eq!(response_json["total_rows"], 0);
-    assert_eq!(response_json["null_app_name_null_url"], 0);
-    assert_eq!(response_json["null_app_name_non_null_url"], 0);
+    let data = &response_json["data"];
+    assert_eq!(data["total_rows"], 0);
+    assert_eq!(data["null_app_name_null_url"], 0);
+    assert_eq!(data["null_app_name_non_null_url"], 0);
 }
 
 // Test response format
@@ -260,15 +276,23 @@ async fn test_app_details_analysis_response_format() {
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    // Verify response structure
-    assert!(response_json["total_rows"].is_number());
-    assert!(response_json["null_app_name_null_url"].is_number());
-    assert!(response_json["null_app_name_non_null_url"].is_number());
+    // Verify standardized response structure
+    assert!(response_json["success"].is_boolean());
+    assert!(response_json["message"].is_string());
+    assert!(response_json["data"].is_object());
+    assert!(response_json["timestamp"].is_string());
+    assert!(response_json["status_code"].is_number());
+
+    // Verify data structure
+    let data = &response_json["data"];
+    assert!(data["total_rows"].is_number());
+    assert!(data["null_app_name_null_url"].is_number());
+    assert!(data["null_app_name_non_null_url"].is_number());
 
     // Verify counts are reasonable
-    let total_rows = response_json["total_rows"].as_u64().unwrap();
-    let null_app_name_null_url = response_json["null_app_name_null_url"].as_u64().unwrap();
-    let null_app_name_non_null_url = response_json["null_app_name_non_null_url"].as_u64().unwrap();
+    let total_rows = data["total_rows"].as_u64().unwrap();
+    let null_app_name_null_url = data["null_app_name_null_url"].as_u64().unwrap();
+    let null_app_name_non_null_url = data["null_app_name_non_null_url"].as_u64().unwrap();
 
     assert!(total_rows > 0);
     assert!(null_app_name_null_url <= total_rows);
@@ -383,8 +407,16 @@ async fn test_app_details_analysis_edge_cases() {
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
+    // Verify standardized response structure
+    assert!(response_json["success"].is_boolean());
+    assert!(response_json["message"].is_string());
+    assert!(response_json["data"].is_object());
+    assert!(response_json["timestamp"].is_string());
+    assert!(response_json["status_code"].is_number());
+
     // Verify specific counts for this test data
-    assert_eq!(response_json["total_rows"], 3);
-    assert_eq!(response_json["null_app_name_null_url"], 1); // Only the second record
-    assert_eq!(response_json["null_app_name_non_null_url"], 1); // Only the third record
+    let data = &response_json["data"];
+    assert_eq!(data["total_rows"], 3);
+    assert_eq!(data["null_app_name_null_url"], 1); // Only the second record
+    assert_eq!(data["null_app_name_non_null_url"], 1); // Only the third record
 } 

@@ -11,8 +11,8 @@ use tracing::{error, info, warn};
 use crate::{
     config::Settings,
     handlers::common::{
-        unified_error_response, unified_success_response, validate_content_type, validate_file_size,
-        validate_json_content, FileUploadResponse, FileValidationResult,
+        create_error_response, create_file_upload_response, validate_content_type, validate_file_size,
+        validate_json_content, FileUploadResponse,
     },
     AppState,
 };
@@ -22,7 +22,7 @@ use crate::error::AppError;
 pub async fn upload_file(
     State(config): State<Settings>,
     mut multipart: Multipart,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<axum::response::Response, AppError> {
     let mut uploaded_files = Vec::new();
     let mut errors = Vec::new();
 
@@ -38,7 +38,7 @@ pub async fn upload_file(
         info!("Processing file upload: {} ({}), type: {}", filename, field_name, content_type);
 
         // Validate content type
-        if let Err(e) = validate_content_type(&content_type, &config.file_upload.allowed_content_types) {
+        if let Err(e) = validate_content_type(&content_type) {
             errors.push(format!("File '{}': {}", filename, e));
             continue;
         }
@@ -52,25 +52,28 @@ pub async fn upload_file(
         let file_size = file_data.len();
 
         // Validate file size
-        if let Err(e) = validate_file_size(file_size, config.file_upload.max_size_mb) {
+        if let Err(e) = validate_file_size(file_size, config.file_upload.max_size_mb * 1024 * 1024) {
             errors.push(format!("File '{}': {}", filename, e));
             continue;
         }
 
-        // Convert bytes to string for JSON validation
+        // Validate JSON content
+        if let Err(e) = validate_json_content(&file_data) {
+            errors.push(format!("File '{}': {}", filename, e));
+            continue;
+        }
+
+        // Convert bytes to string for processing
         let content = String::from_utf8(file_data.to_vec()).map_err(|e| {
             error!("Invalid UTF-8 in file {}: {}", filename, e);
             AppError::FileUpload(format!("Invalid UTF-8 encoding: {}", e))
         })?;
 
-        // Validate JSON content
-        let json_data = match validate_json_content(&content) {
-            Ok(data) => data,
-            Err(e) => {
-                errors.push(format!("File '{}': {}", filename, e));
-                continue;
-            }
-        };
+        // Parse JSON data
+        let json_data: Value = serde_json::from_str(&content).map_err(|e| {
+            error!("Invalid JSON in file {}: {}", filename, e);
+            AppError::FileUpload(format!("Invalid JSON format: {}", e))
+        })?;
 
         // Save to temporary file
         let temp_file = match save_to_temp_file(&content, &filename).await {
@@ -81,13 +84,16 @@ pub async fn upload_file(
             }
         };
 
-        // Create upload response
-        let upload_response = FileUploadResponse {
-            filename: filename.clone(),
-            size: file_size,
-            content_type,
-            processed: true,
-        };
+        // Create upload response using the new format
+        let upload_response = create_file_upload_response(
+            "File processed successfully",
+            &filename,
+            file_size,
+            1, // rows_processed
+            1, // rows_inserted
+            0, // rows_failed
+            axum::http::StatusCode::OK,
+        );
 
         uploaded_files.push((upload_response, json_data, temp_file));
 
@@ -97,24 +103,41 @@ pub async fn upload_file(
     // If there were errors but also successful uploads, return partial success
     if !errors.is_empty() && !uploaded_files.is_empty() {
         warn!("File upload completed with {} errors", errors.len());
-        return Ok(unified_error_response("Some files failed to upload", errors));
+        return Ok(create_error_response(
+            "FILE_UPLOAD_ERROR",
+            "Some files failed to upload",
+            axum::http::StatusCode::BAD_REQUEST,
+            None,
+        ).into_response());
     }
 
-    // If all files failed, return error
+    // If there were only errors, return error response
     if !errors.is_empty() {
-        return Ok(unified_error_response("All files failed to upload", errors));
+        error!("File upload failed with {} errors", errors.len());
+        return Ok(create_error_response(
+            "FILE_UPLOAD_ERROR",
+            "All files failed to upload",
+            axum::http::StatusCode::BAD_REQUEST,
+            None,
+        ).into_response());
     }
 
-    // All files processed successfully
-    let responses: Vec<FileUploadResponse> = uploaded_files
-        .iter()
-        .map(|(response, _, _)| response.clone())
-        .collect();
+    // If no files were uploaded, return error
+    if uploaded_files.is_empty() {
+        return Ok(create_error_response(
+            "NO_FILES_UPLOADED",
+            "No files were uploaded",
+            axum::http::StatusCode::BAD_REQUEST,
+            None,
+        ).into_response());
+    }
 
-    Ok(unified_success_response(responses, "Files uploaded successfully"))
+    // Return success response with the first uploaded file
+    let (response, _, _) = uploaded_files.remove(0);
+    Ok(response.into_response())
 }
 
-/// Compatibility wrapper for upload_file that works with AppState
+/// Compatible file upload handler that works with AppState
 pub async fn upload_file_compat(
     State(app_state): State<AppState>,
     multipart: Multipart,
@@ -123,59 +146,48 @@ pub async fn upload_file_compat(
 }
 
 /// Save content to a temporary file
-async fn save_to_temp_file(content: &str, filename: &str) -> Result<NamedTempFile, std::io::Error> {
+async fn save_to_temp_file(content: &str, _filename: &str) -> Result<NamedTempFile, std::io::Error> {
     let temp_file = NamedTempFile::new()?;
     fs::write(&temp_file, content).await?;
-    
-    info!("Saved temporary file: {} -> {:?}", filename, temp_file.path());
     Ok(temp_file)
 }
 
 /// Clean up temporary files
 pub async fn cleanup_temp_files(temp_files: Vec<NamedTempFile>) {
     for temp_file in temp_files {
-        if let Err(e) = temp_file.close() {
-            error!("Failed to close temporary file: {}", e);
+        if let Err(e) = fs::remove_file(temp_file.path()).await {
+            warn!("Failed to remove temporary file: {}", e);
         }
     }
 }
 
 /// Extract JSON data from uploaded files
-pub fn extract_json_data(uploaded_files: &[(FileUploadResponse, Value, NamedTempFile)]) -> Vec<Value> {
+pub fn extract_json_data(uploaded_files: &[(axum::response::Json<FileUploadResponse>, Value, NamedTempFile)]) -> Vec<Value> {
     uploaded_files
         .iter()
         .map(|(_, json_data, _)| json_data.clone())
         .collect()
 }
 
-/// Validate uploaded file structure
-pub fn validate_file_structure(json_data: &Value) -> FileValidationResult {
-    let mut errors = Vec::new();
-    
-    // Basic JSON structure validation
-    if !json_data.is_object() && !json_data.is_array() {
-        errors.push("JSON must be an object or array".to_string());
-    }
-
-    // Check for required fields if it's an object
-    if let Some(obj) = json_data.as_object() {
-        if obj.is_empty() {
-            errors.push("JSON object cannot be empty".to_string());
+/// Validate file structure
+pub fn validate_file_structure(json_data: &Value) -> bool {
+    match json_data {
+        Value::Array(arr) => {
+            if arr.is_empty() {
+                warn!("File contains empty array");
+                return false;
+            }
+            // Check if all elements are objects
+            arr.iter().all(|item| item.is_object())
         }
-    }
-
-    // Check for required fields if it's an array
-    if let Some(arr) = json_data.as_array() {
-        if arr.is_empty() {
-            errors.push("JSON array cannot be empty".to_string());
+        Value::Object(_) => {
+            warn!("File contains single object, expected array");
+            false
         }
-    }
-
-    FileValidationResult {
-        is_valid: errors.is_empty(),
-        errors,
-        file_size: 0, // Will be set by caller
-        content_type: "application/json".to_string(),
+        _ => {
+            warn!("File contains invalid JSON structure");
+            false
+        }
     }
 }
 
@@ -186,69 +198,57 @@ mod tests {
 
     #[test]
     fn test_validate_file_structure_object() {
-        let valid_json = json!({"key": "value"});
-        let result = validate_file_structure(&valid_json);
-        assert!(result.is_valid);
-        assert!(result.errors.is_empty());
+        let data = json!({"key": "value"});
+        assert!(!validate_file_structure(&data));
     }
 
     #[test]
     fn test_validate_file_structure_array() {
-        let valid_json = json!([{"key": "value"}]);
-        let result = validate_file_structure(&valid_json);
-        assert!(result.is_valid);
-        assert!(result.errors.is_empty());
+        let data = json!([{"key": "value"}, {"key2": "value2"}]);
+        assert!(validate_file_structure(&data));
     }
 
     #[test]
     fn test_validate_file_structure_empty_object() {
-        let empty_json = json!({});
-        let result = validate_file_structure(&empty_json);
-        assert!(!result.is_valid);
-        assert!(result.errors.contains(&"JSON object cannot be empty".to_string()));
+        let data = json!({});
+        assert!(!validate_file_structure(&data));
     }
 
     #[test]
     fn test_validate_file_structure_empty_array() {
-        let empty_json = json!([]);
-        let result = validate_file_structure(&empty_json);
-        assert!(!result.is_valid);
-        assert!(result.errors.contains(&"JSON array cannot be empty".to_string()));
+        let data = json!([]);
+        assert!(!validate_file_structure(&data));
     }
 
     #[test]
     fn test_extract_json_data() {
-        let test_response = FileUploadResponse {
-            filename: "test.json".to_string(),
-            size: 100,
-            content_type: "application/json".to_string(),
-            processed: true,
-        };
-        
-        let test_json = json!({"test": "data"});
         let temp_file = NamedTempFile::new().unwrap();
+        let response = create_file_upload_response(
+            "test",
+            "test.json",
+            100,
+            1,
+            1,
+            0,
+            axum::http::StatusCode::OK,
+        );
+        let json_data = json!({"test": "data"});
         
-        let uploaded_files = vec![(test_response, test_json.clone(), temp_file)];
-        let extracted_data = extract_json_data(&uploaded_files);
+        let uploaded_files = vec![(response, json_data.clone(), temp_file)];
+        let extracted = extract_json_data(&uploaded_files);
         
-        assert_eq!(extracted_data.len(), 1);
-        assert_eq!(extracted_data[0], test_json);
+        assert_eq!(extracted.len(), 1);
+        assert_eq!(extracted[0], json_data);
     }
 
-    #[test]
-    fn test_save_to_temp_file() {
+    #[tokio::test]
+    async fn test_save_to_temp_file() {
         let content = r#"{"test": "data"}"#;
         let filename = "test.json";
         
-        let result = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(save_to_temp_file(content, filename));
+        let temp_file = save_to_temp_file(content, filename).await.unwrap();
+        let saved_content = fs::read_to_string(temp_file.path()).await.unwrap();
         
-        assert!(result.is_ok());
-        let temp_file = result.unwrap();
-        assert!(temp_file.path().exists());
-        
-        // Clean up
-        let _ = temp_file.close();
+        assert_eq!(saved_content, content);
     }
 } 

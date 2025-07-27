@@ -6,6 +6,7 @@ use axum_extra::extract::Multipart;
 use serde::{Deserialize, Serialize};
 use sqlx::{Sqlite, Transaction};
 use tracing::{error, info, warn};
+// validator::Validate removed as it's no longer used
 
 use crate::{
     error::types::AppError,
@@ -20,6 +21,8 @@ use crate::{
         run_more_details_repository::RunMoreDetailsRepository,
         traits::{Repository, TransactionRepository},
     },
+    handlers::{common::create_file_upload_response, validation::{RunData, FixAppNamesRequest, validate_json_content, validate_timestamp_format, validate_vram_usage_format, MAX_FILE_SIZE, ALLOWED_FILE_EXTENSIONS}},
+    middleware::validation::validate_file_upload,
     AppState,
 };
 
@@ -63,33 +66,24 @@ pub struct ProcessGpuResponse {
     pub rows_inserted: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct RunData {
-    timestamp: String,
-    vram_usage: String,
-    info: String,
-    system_info: String,
-    model_info: String,
-    device_info: String,
-    xformers: String,
-    model_name: String,
-    user: String,
-    notes: String,
-}
+// RunData is now imported from validation module
 
 pub async fn save_data(
     State(state): State<AppState>,
     mut multipart: Multipart,
-) -> Result<Json<SaveDataResponse>, AppError> {
+) -> Result<Json<crate::handlers::common::FileUploadResponse>, AppError> {
     info!("Processing save-data request");
 
     // Extract file from multipart
     let mut file_content = None;
+    let mut file_name = None;
+    
     while let Some(field) = multipart.next_field().await.map_err(|e| {
         error!("Failed to read multipart field: {}", e);
         AppError::BadRequest("Invalid multipart data".to_string())
     })? {
         if field.name() == Some("file") {
+            file_name = field.file_name().map(|s| s.to_string());
             let data = field.bytes().await.map_err(|e| {
                 error!("Failed to read file bytes: {}", e);
                 AppError::BadRequest("Failed to read uploaded file".to_string())
@@ -104,6 +98,21 @@ pub async fn save_data(
         AppError::BadRequest("No file provided".to_string())
     })?;
 
+    let final_file_name = file_name.as_ref().unwrap_or(&"unknown.json".to_string()).to_string();
+
+    // Validate file upload
+    validate_file_upload(
+        &file_bytes,
+        &final_file_name,
+        MAX_FILE_SIZE,
+        ALLOWED_FILE_EXTENSIONS,
+    )?;
+
+    // Validate JSON content
+    validate_json_content(&file_bytes).map_err(|e| {
+        AppError::Validation(format!("Invalid JSON content: {}", e))
+    })?;
+
     // Parse JSON from file
     let file_string = String::from_utf8(file_bytes.to_vec()).map_err(|e| {
         error!("Failed to convert file to UTF-8: {}", e);
@@ -114,6 +123,17 @@ pub async fn save_data(
         error!("Failed to parse JSON: {}", e);
         AppError::BadRequest("Invalid JSON format".to_string())
     })?;
+
+    // Validate each run data entry
+    for (index, data) in run_data.iter().enumerate() {
+        // Additional custom validations
+        validate_timestamp_format(&data.timestamp).map_err(|e| {
+            AppError::Validation(format!("Invalid timestamp format at index {}: {}", index, e))
+        })?;
+        validate_vram_usage_format(&data.vram_usage).map_err(|e| {
+            AppError::Validation(format!("Invalid VRAM usage format at index {}: {}", index, e))
+        })?;
+    }
 
     info!("Parsed {} rows from uploaded file", run_data.len());
 
@@ -180,16 +200,17 @@ pub async fn save_data(
         inserted_rows, error_rows, run_data.len()
     );
 
-    let response = SaveDataResponse {
-        success: true,
-        message: "Data processed successfully".to_string(),
-        total_rows: run_data.len(),
+    let final_file_name = file_name.as_ref().unwrap_or(&"unknown.json".to_string()).to_string();
+    
+    Ok(create_file_upload_response(
+        "Data processed successfully",
+        &final_file_name,
+        file_bytes.len(),
+        run_data.len(),
         inserted_rows,
         error_rows,
-        error_data,
-    };
-
-    Ok(Json(response))
+        axum::http::StatusCode::OK,
+    ))
 }
 
 async fn clear_runs_table(tx: &mut Transaction<'_, Sqlite>) -> Result<(), sqlx::Error> {
@@ -233,7 +254,7 @@ async fn clear_runs_table(tx: &mut Transaction<'_, Sqlite>) -> Result<(), sqlx::
 
 pub async fn process_its(
     State(state): State<AppState>,
-) -> Result<Json<ProcessItsResponse>, AppError> {
+) -> Result<Json<crate::handlers::common::ProcessingResponse>, AppError> {
     info!("Processing ITS data from runs table");
 
     // Start transaction
@@ -331,12 +352,15 @@ pub async fn process_its(
 
     info!("ITS processing complete: {} rows inserted", inserted_rows);
 
-    let response = ProcessItsResponse {
-        success: true,
-        rows_inserted: inserted_rows,
-    };
-
-    Ok(Json(response))
+    Ok(crate::handlers::common::create_processing_response(
+        "ITS processing completed successfully",
+        runs.len(),
+        inserted_rows,
+        0, // rows_updated
+        0, // rows_deleted
+        vec![], // errors
+        axum::http::StatusCode::OK,
+    ))
 }
 
 pub async fn process_app_details(
@@ -1035,11 +1059,31 @@ pub async fn update_gpu_brands(
             AppError::Database(e)
         })?;
 
+        // Return all brand categories with 0 counts
+        let update_counts_by_brand = vec![
+            BrandCount {
+                brand_name: "Nvidia".to_string(),
+                count: 0,
+            },
+            BrandCount {
+                brand_name: "Amd".to_string(),
+                count: 0,
+            },
+            BrandCount {
+                brand_name: "Intel".to_string(),
+                count: 0,
+            },
+            BrandCount {
+                brand_name: "Unknown".to_string(),
+                count: 0,
+            },
+        ];
+
         let response = UpdateGpuBrandsResponse {
             status: true,
             message: "No GPU data found to update".to_string(),
             total_updates: 0,
-            update_counts_by_brand: vec![],
+            update_counts_by_brand,
         };
 
         return Ok(Json(response));
@@ -1303,7 +1347,7 @@ pub struct AppDetailsAnalysisResponse {
 
 pub async fn app_details_analysis(
     State(state): State<AppState>,
-) -> Result<Json<AppDetailsAnalysisResponse>, AppError> {
+) -> Result<Json<crate::handlers::common::ApiResponse<AppDetailsAnalysisResponse>>, AppError> {
     info!("Analyzing app details");
 
     let result = sqlx::query!(
@@ -1331,7 +1375,11 @@ pub async fn app_details_analysis(
     info!("App details analysis complete: {} total rows, {} null app_name null url, {} null app_name non-null url", 
           response.total_rows, response.null_app_name_null_url, response.null_app_name_non_null_url);
 
-    Ok(Json(response))
+    Ok(crate::handlers::common::create_success_response(
+        response,
+        "App details analysis completed successfully",
+        axum::http::StatusCode::OK,
+    ))
 }
 
 #[derive(Debug, Serialize)]
@@ -1348,20 +1396,20 @@ pub struct UpdatedCounts {
     pub null_app_name_null_url: i64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct FixAppNamesRequest {
-    pub automatic1111: String,
-    pub vladmandic: String,
-    pub stable_diffusion: String,
-    pub null_app_name_null_url: String,
-}
+// FixAppNamesRequest is now imported from validation module
 
 pub async fn fix_app_names(
     State(state): State<AppState>,
     Json(request): Json<FixAppNamesRequest>,
-) -> Result<Json<FixAppNamesResponse>, AppError> {
+) -> Result<Json<crate::handlers::common::ApiResponse<FixAppNamesResponse>>, AppError> {
     info!("Fixing app names with parameters: automatic1111={}, vladmandic={}, stable_diffusion={}, null_app_name_null_url={}", 
           request.automatic1111, request.vladmandic, request.stable_diffusion, request.null_app_name_null_url);
+
+    // Basic validation for request fields
+    if request.automatic1111.is_empty() || request.vladmandic.is_empty() || 
+       request.stable_diffusion.is_empty() || request.null_app_name_null_url.is_empty() {
+        return Err(AppError::Validation("All fields must be non-empty".to_string()));
+    }
 
     // Start a transaction
     let mut tx = state.db.begin().await.map_err(|e| {
@@ -1464,7 +1512,11 @@ pub async fn fix_app_names(
     info!("App names fix complete: AUTOMATIC1111={}, Vladmandic={}, StableDiffusion={}, NullAppNameNullUrl={}", 
           count_automatic1111, count_vladmandic, count_stable_diffusion, count_null_app_name_null_url);
 
-    Ok(Json(response))
+    Ok(crate::handlers::common::create_success_response(
+        response,
+        "App names updated successfully",
+        axum::http::StatusCode::OK,
+    ))
 }
 
 #[derive(Debug, Serialize)]
