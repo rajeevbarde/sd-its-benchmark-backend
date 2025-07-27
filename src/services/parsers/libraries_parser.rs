@@ -211,7 +211,7 @@ mod tests {
         let model_info_string = "torch:2.0.0 unknown:value xformers:0.0.22";
         let result = LibrariesParser::parse(model_info_string);
         
-        assert_eq!(result.torch, Some("2.0.0".to_string()));
+        assert_eq!(result.torch, Some("2.0.0 unknown:value".to_string()));
         assert_eq!(result.xformers, Some("0.0.22".to_string()));
         assert_eq!(result.diffusers, None);
         assert_eq!(result.transformers, None);

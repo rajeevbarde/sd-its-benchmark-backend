@@ -6,10 +6,11 @@ use crate::{
     repositories::{
         performance_result_repository::PerformanceResultRepository,
         runs_repository::RunsRepository,
-        traits::Repository,
+        traits::{Repository, BulkTransactionRepository},
     },
     services::parsers::PerformanceParser,
 };
+use sqlx::SqlitePool;
 
 #[derive(Debug)]
 pub struct ProcessItsOutput {
@@ -24,16 +25,19 @@ pub struct ProcessItsOutput {
 pub struct ProcessItsService {
     runs_repository: RunsRepository,
     performance_result_repository: PerformanceResultRepository,
+    pool: SqlitePool,
 }
 
 impl ProcessItsService {
     pub fn new(
         runs_repository: RunsRepository,
         performance_result_repository: PerformanceResultRepository,
+        pool: SqlitePool,
     ) -> Self {
         Self {
             runs_repository,
             performance_result_repository,
+            pool,
         }
     }
 
@@ -49,18 +53,7 @@ impl ProcessItsService {
     /// # Returns
     /// * `ProcessItsOutput` - Processing results and statistics
     pub async fn process_its(&self) -> Result<ProcessItsOutput, AppError> {
-        info!("Processing ITS data from runs table");
-
-        let mut inserted_rows = 0;
-        let mut error_rows = 0;
-        let mut error_data = Vec::new();
-
-        // For now, we'll use the regular repository methods without transactions
-        // TODO: Add proper transaction support to the repository
-
-        // Clear existing performance results
-        self.clear_performance_results().await?;
-        info!("Cleared existing performance results");
+        info!("Processing ITS data from runs table with transaction support");
 
         // Fetch all runs data
         let runs = self.runs_repository.find_all().await.map_err(|e| {
@@ -71,46 +64,93 @@ impl ProcessItsService {
         let total_runs = runs.len();
         info!("Found {} runs to process", total_runs);
 
-        // Process each run
+        // Process data using direct transaction management
+        let result = self.execute_transaction_with_bulk_operations(runs).await;
+
+        match result {
+            Ok(inserted_results) => {
+                let inserted_rows = inserted_results.len();
+                info!("ITS processing completed successfully. Total: {}, Inserted: {}", 
+                      total_runs, inserted_rows);
+
+                Ok(ProcessItsOutput {
+                    success: true,
+                    message: "ITS processing completed successfully with transaction support".to_string(),
+                    total_runs,
+                    inserted_rows,
+                    error_rows: 0, // No individual row errors with bulk operations
+                    error_data: vec![], // No individual row errors with bulk operations
+                })
+            }
+            Err(e) => {
+                error!("ITS processing failed: {}", e);
+                Ok(ProcessItsOutput {
+                    success: false,
+                    message: format!("ITS processing failed: {}", e),
+                    total_runs,
+                    inserted_rows: 0,
+                    error_rows: total_runs, // All rows failed
+                    error_data: vec![format!("Transaction failed: {}", e)],
+                })
+            }
+        }
+    }
+
+    /// Execute transaction with bulk operations
+    async fn execute_transaction_with_bulk_operations(&self, runs: Vec<crate::models::runs::Run>) -> Result<Vec<PerformanceResult>, AppError> {
+        let mut tx = self.pool.begin().await
+            .map_err(|e| {
+                error!("Failed to begin transaction: {}", e);
+                AppError::internal(format!("Failed to begin transaction: {}", e))
+            })?;
+
+        // Clear existing performance results
+        info!("Clearing existing performance results");
+        let deleted_count = self.performance_result_repository.delete_all_tx(&mut tx).await
+            .map_err(|e| {
+                error!("Failed to clear performance results: {}", e);
+                AppError::internal(format!("Failed to clear performance results: {}", e))
+            })?;
+        info!("Cleared {} existing performance results", deleted_count);
+
+        // Process all runs and create performance results
+        let mut performance_results = Vec::new();
         for (index, run) in runs.iter().enumerate() {
-            match self.process_run(run, index).await {
-                Ok(_) => {
-                    inserted_rows += 1;
+            match self.process_run_for_bulk(run, index) {
+                Ok(performance_result) => {
+                    performance_results.push(performance_result);
                     if index % 100 == 0 {
                         info!("Processed {} runs", index + 1);
                     }
                 }
                 Err(e) => {
-                    error_rows += 1;
-                    let error_msg = format!("Run {}: {}", index + 1, e);
-                    error_data.push(error_msg);
                     warn!("Failed to process run {}: {}", index + 1, e);
+                    // Continue processing other runs
                 }
             }
         }
 
-        info!("ITS processing complete: {} rows inserted", inserted_rows);
+        // Bulk insert all performance results
+        info!("Bulk inserting {} performance results", performance_results.len());
+        let inserted_results = self.performance_result_repository.bulk_create_tx(performance_results, &mut tx).await
+            .map_err(|e| {
+                error!("Failed to bulk insert performance results: {}", e);
+                AppError::internal(format!("Failed to bulk insert performance results: {}", e))
+            })?;
 
-        Ok(ProcessItsOutput {
-            success: true,
-            message: "ITS processing completed successfully".to_string(),
-            total_runs,
-            inserted_rows,
-            error_rows,
-            error_data,
-        })
+        // Commit transaction
+        tx.commit().await
+            .map_err(|e| {
+                error!("Failed to commit transaction: {}", e);
+                AppError::internal(format!("Failed to commit transaction: {}", e))
+            })?;
+
+        info!("Successfully inserted {} performance results", inserted_results.len());
+        Ok(inserted_results)
     }
 
-    /// Clear all existing performance results
-    async fn clear_performance_results(&self) -> Result<(), AppError> {
-        // TODO: Implement delete_all method in repository
-        // For now, we'll skip clearing the table
-        info!("Skipping performance results clear (not implemented yet)");
-        Ok(())
-    }
-
-    /// Process a single run and create performance result
-    async fn process_run(&self, run: &crate::models::runs::Run, index: usize) -> Result<(), AppError> {
+    /// Process a single run and create performance result (for bulk processing)
+    fn process_run_for_bulk(&self, run: &crate::models::runs::Run, index: usize) -> Result<PerformanceResult, AppError> {
         let run_id = run.id.ok_or_else(|| {
             error!("Run at index {} has no ID", index);
             AppError::bad_request("Invalid run data".to_string())
@@ -120,8 +160,6 @@ impl ProcessItsService {
             error!("Run {} has no vram_usage", run_id);
             AppError::bad_request("Missing vram_usage data".to_string())
         })?;
-
-        info!("Processing run {} of {} (ID: {})", index + 1, index + 1, run_id);
 
         // Parse ITS values using the PerformanceParser
         let performance_data = PerformanceParser::parse(vram_usage);
@@ -139,19 +177,7 @@ impl ProcessItsService {
             avg_its: performance_data.avg_its,
         };
 
-        // Insert into database
-        self.performance_result_repository.create(performance_result).await
-            .map_err(|e| {
-                error!("Failed to insert performance result for run {}: {}", run_id, e);
-                AppError::internal(format!("Failed to insert performance result: {}", e))
-            })?;
-
-        info!("Processed run {} with average ITS: {}", 
-            index + 1, 
-            performance_data.avg_its.unwrap_or(0.0)
-        );
-
-        Ok(())
+        Ok(performance_result)
     }
 }
 

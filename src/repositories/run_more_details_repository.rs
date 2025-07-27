@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use sqlx::{Error, SqlitePool, Transaction, Sqlite};
 
 use crate::models::run_more_details::RunMoreDetails;
-use crate::repositories::traits::{Repository, TransactionRepository};
+use crate::repositories::traits::{Repository, TransactionRepository, BulkRepository, BulkTransactionRepository};
 
 pub struct RunMoreDetailsRepository {
     pool: SqlitePool,
@@ -249,5 +249,110 @@ impl<'a> TransactionRepository<'a, RunMoreDetails, i64> for RunMoreDetailsReposi
             .execute(&mut **tx)
             .await?;
         Ok(())
+    }
+} 
+
+#[async_trait]
+impl BulkRepository<RunMoreDetails, i64> for RunMoreDetailsRepository {
+    async fn bulk_create(&self, entities: Vec<RunMoreDetails>) -> Result<Vec<RunMoreDetails>, Error> {
+        if entities.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let mut tx = self.pool.begin().await?;
+        
+        let result = self.bulk_create_tx(entities, &mut tx).await;
+        
+        match result {
+            Ok(results) => {
+                tx.commit().await?;
+                Ok(results)
+            }
+            Err(e) => {
+                tx.rollback().await?;
+                Err(e)
+            }
+        }
+    }
+
+    async fn bulk_update(&self, entities: Vec<RunMoreDetails>) -> Result<Vec<RunMoreDetails>, Error> {
+        if entities.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let mut tx = self.pool.begin().await?;
+        
+        let result = self.bulk_update_tx(entities, &mut tx).await;
+        
+        match result {
+            Ok(results) => {
+                tx.commit().await?;
+                Ok(results)
+            }
+            Err(e) => {
+                tx.rollback().await?;
+                Err(e)
+            }
+        }
+    }
+
+    async fn delete_all(&self) -> Result<usize, Error> {
+        let mut tx = self.pool.begin().await?;
+        
+        let result = self.delete_all_tx(&mut tx).await;
+        
+        match result {
+            Ok(count) => {
+                tx.commit().await?;
+                Ok(count)
+            }
+            Err(e) => {
+                tx.rollback().await?;
+                Err(e)
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl<'a> BulkTransactionRepository<'a, RunMoreDetails, i64> for RunMoreDetailsRepository {
+    async fn bulk_create_tx(&self, entities: Vec<RunMoreDetails>, tx: &mut Transaction<'a, Sqlite>) -> Result<Vec<RunMoreDetails>, Error> {
+        if entities.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let mut created_results = Vec::with_capacity(entities.len());
+
+        // Use batch processing for better performance
+        for entity in entities {
+            let created_result = self.create_tx(entity, tx).await?;
+            created_results.push(created_result);
+        }
+
+        Ok(created_results)
+    }
+
+    async fn bulk_update_tx(&self, entities: Vec<RunMoreDetails>, tx: &mut Transaction<'a, Sqlite>) -> Result<Vec<RunMoreDetails>, Error> {
+        if entities.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let mut updated_results = Vec::with_capacity(entities.len());
+
+        // Use batch processing for better performance
+        for entity in entities {
+            let updated_result = self.update_tx(entity, tx).await?;
+            updated_results.push(updated_result);
+        }
+
+        Ok(updated_results)
+    }
+
+    async fn delete_all_tx(&self, tx: &mut Transaction<'a, Sqlite>) -> Result<usize, Error> {
+        let result = sqlx::query!("DELETE FROM RunMoreDetails")
+            .execute(&mut **tx)
+            .await?;
+        
+        Ok(result.rows_affected() as usize)
     }
 } 

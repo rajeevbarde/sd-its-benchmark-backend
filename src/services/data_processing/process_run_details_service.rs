@@ -6,9 +6,10 @@ use crate::{
     repositories::{
         run_more_details_repository::RunMoreDetailsRepository,
         runs_repository::RunsRepository,
-        traits::Repository,
+        traits::{Repository, BulkTransactionRepository},
     },
 };
+use sqlx::SqlitePool;
 
 #[derive(Debug)]
 pub struct ProcessRunDetailsOutput {
@@ -20,16 +21,19 @@ pub struct ProcessRunDetailsOutput {
 pub struct ProcessRunDetailsService {
     runs_repository: RunsRepository,
     run_more_details_repository: RunMoreDetailsRepository,
+    pool: SqlitePool,
 }
 
 impl ProcessRunDetailsService {
     pub fn new(
         runs_repository: RunsRepository,
         run_more_details_repository: RunMoreDetailsRepository,
+        pool: SqlitePool,
     ) -> Self {
         Self {
             runs_repository,
             run_more_details_repository,
+            pool,
         }
     }
 
@@ -44,15 +48,7 @@ impl ProcessRunDetailsService {
     /// # Returns
     /// * `ProcessRunDetailsOutput` - Processing results and statistics
     pub async fn process_run_details(&self) -> Result<ProcessRunDetailsOutput, AppError> {
-        info!("Processing run details from runs table to RunMoreDetails table");
-
-        // Clear all existing data from RunMoreDetails table
-        self.run_more_details_repository.clear_all().await.map_err(|e| {
-            error!("Failed to clear RunMoreDetails table: {}", e);
-            AppError::internal(format!("Failed to clear RunMoreDetails table: {}", e))
-        })?;
-
-        info!("Cleared existing RunMoreDetails data");
+        info!("Processing run details from runs table to RunMoreDetails table with transaction support");
 
         // Fetch all runs data
         let runs_data = self.runs_repository.find_all().await.map_err(|e| {
@@ -72,40 +68,87 @@ impl ProcessRunDetailsService {
 
         info!("Found {} runs to process", runs_data.len());
 
-        let mut total_inserts = 0;
-        let mut error_count = 0;
+        // Process data using direct transaction management
+        let result = self.execute_transaction_with_bulk_operations(runs_data).await;
 
-        // Process each run
-        for run in &runs_data {
-            match self.process_run(run).await {
-                Ok(_) => {
-                    total_inserts += 1;
+        match result {
+            Ok(inserted_results) => {
+                let total_inserts = inserted_results.len();
+                info!("Run details processing completed successfully. Total inserts: {}", total_inserts);
+
+                Ok(ProcessRunDetailsOutput {
+                    success: true,
+                    message: "Run details processed successfully with transaction support!".to_string(),
+                    total_inserts,
+                })
+            }
+            Err(e) => {
+                error!("Run details processing failed: {}", e);
+                Ok(ProcessRunDetailsOutput {
+                    success: false,
+                    message: format!("Run details processing failed: {}", e),
+                    total_inserts: 0,
+                })
+            }
+        }
+    }
+
+    /// Execute transaction with bulk operations
+    async fn execute_transaction_with_bulk_operations(&self, runs: Vec<Run>) -> Result<Vec<RunMoreDetails>, AppError> {
+        let mut tx = self.pool.begin().await
+            .map_err(|e| {
+                error!("Failed to begin transaction: {}", e);
+                AppError::internal(format!("Failed to begin transaction: {}", e))
+            })?;
+
+        // Clear all existing data from RunMoreDetails table
+        info!("Clearing existing RunMoreDetails data");
+        let deleted_count = self.run_more_details_repository.delete_all_tx(&mut tx).await
+            .map_err(|e| {
+                error!("Failed to clear RunMoreDetails table: {}", e);
+                AppError::internal(format!("Failed to clear RunMoreDetails table: {}", e))
+            })?;
+        info!("Cleared {} existing RunMoreDetails records", deleted_count);
+
+        // Process all runs and create run more details
+        let mut run_more_details = Vec::new();
+        for run in &runs {
+            match self.process_run_for_bulk(run) {
+                Ok(run_detail) => {
+                    run_more_details.push(run_detail);
                 }
                 Err(e) => {
-                    error_count += 1;
                     warn!("Failed to process run {}: {}", run.id.unwrap_or(0), e);
+                    // Continue processing other runs
                 }
             }
         }
 
-        info!("Run details processing complete: {} total inserts, {} errors", 
-              total_inserts, error_count);
+        // Bulk insert all run more details
+        info!("Bulk inserting {} run more details", run_more_details.len());
+        let inserted_results = self.run_more_details_repository.bulk_create_tx(run_more_details, &mut tx).await
+            .map_err(|e| {
+                error!("Failed to bulk insert run more details: {}", e);
+                AppError::internal(format!("Failed to bulk insert run more details: {}", e))
+            })?;
 
-        Ok(ProcessRunDetailsOutput {
-            success: true,
-            message: "Run details processed successfully!".to_string(),
-            total_inserts,
-        })
+        // Commit transaction
+        tx.commit().await
+            .map_err(|e| {
+                error!("Failed to commit transaction: {}", e);
+                AppError::internal(format!("Failed to commit transaction: {}", e))
+            })?;
+
+        info!("Successfully inserted {} run more details", inserted_results.len());
+        Ok(inserted_results)
     }
 
-    /// Process a single run and insert into RunMoreDetails
-    async fn process_run(&self, run: &Run) -> Result<(), AppError> {
+    /// Process a single run and insert into RunMoreDetails (for bulk processing)
+    fn process_run_for_bulk(&self, run: &Run) -> Result<RunMoreDetails, AppError> {
         let run_id = run.id.ok_or_else(|| {
             error!("Run has no ID");
             AppError::bad_request("Invalid run data".to_string())
         })?;
-
-        info!("Processing run details for run ID: {}", run_id);
 
         // Create RunMoreDetails record
         let run_more_details = RunMoreDetails {
@@ -118,14 +161,7 @@ impl ProcessRunDetailsService {
             model_map_id: None, // Will be populated by a later service
         };
 
-        // Insert into RunMoreDetails table
-        self.run_more_details_repository.create(run_more_details).await
-            .map_err(|e| {
-                error!("Failed to insert run details for run {}: {}", run_id, e);
-                AppError::internal(format!("Failed to insert run details: {}", e))
-            })?;
-
-        Ok(())
+        Ok(run_more_details)
     }
 }
 

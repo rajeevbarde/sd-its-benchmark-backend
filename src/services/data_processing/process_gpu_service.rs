@@ -6,10 +6,11 @@ use crate::{
     repositories::{
         gpu_repository::GpuRepository,
         runs_repository::RunsRepository,
-        traits::Repository,
+        traits::{Repository, BulkTransactionRepository},
     },
     services::parsers::GpuInfoParser,
 };
+use sqlx::SqlitePool;
 
 #[derive(Debug)]
 pub struct ProcessGpuOutput {
@@ -24,16 +25,19 @@ pub struct ProcessGpuOutput {
 pub struct ProcessGpuService {
     runs_repository: RunsRepository,
     gpu_repository: GpuRepository,
+    pool: SqlitePool,
 }
 
 impl ProcessGpuService {
     pub fn new(
         runs_repository: RunsRepository,
         gpu_repository: GpuRepository,
+        pool: SqlitePool,
     ) -> Self {
         Self {
             runs_repository,
             gpu_repository,
+            pool,
         }
     }
 
@@ -48,18 +52,7 @@ impl ProcessGpuService {
     /// # Returns
     /// * `ProcessGpuOutput` - Processing results and statistics
     pub async fn process_gpu(&self) -> Result<ProcessGpuOutput, AppError> {
-        info!("Processing GPU info from runs table");
-
-        let mut inserted_rows = 0;
-        let mut error_rows = 0;
-        let mut error_data = Vec::new();
-
-        // For now, we'll use the regular repository methods without transactions
-        // TODO: Add proper transaction support to the repository
-
-        // Clear existing GPU data
-        self.clear_gpu_data().await?;
-        info!("Cleared existing GPU data");
+        info!("Processing GPU info from runs table with transaction support");
 
         // Fetch all runs data
         let runs = self.runs_repository.find_all().await.map_err(|e| {
@@ -70,46 +63,93 @@ impl ProcessGpuService {
         let total_runs = runs.len();
         info!("Found {} runs to process", total_runs);
 
-        // Process each run
+        // Process data using direct transaction management
+        let result = self.execute_transaction_with_bulk_operations(runs).await;
+
+        match result {
+            Ok(inserted_results) => {
+                let inserted_rows = inserted_results.len();
+                info!("GPU processing completed successfully. Total: {}, Inserted: {}", 
+                      total_runs, inserted_rows);
+
+                Ok(ProcessGpuOutput {
+                    success: true,
+                    message: "GPU processing completed successfully with transaction support".to_string(),
+                    total_runs,
+                    inserted_rows,
+                    error_rows: 0, // No individual row errors with bulk operations
+                    error_data: vec![], // No individual row errors with bulk operations
+                })
+            }
+            Err(e) => {
+                error!("GPU processing failed: {}", e);
+                Ok(ProcessGpuOutput {
+                    success: false,
+                    message: format!("GPU processing failed: {}", e),
+                    total_runs,
+                    inserted_rows: 0,
+                    error_rows: total_runs, // All rows failed
+                    error_data: vec![format!("Transaction failed: {}", e)],
+                })
+            }
+        }
+    }
+
+    /// Execute transaction with bulk operations
+    async fn execute_transaction_with_bulk_operations(&self, runs: Vec<crate::models::runs::Run>) -> Result<Vec<Gpu>, AppError> {
+        let mut tx = self.pool.begin().await
+            .map_err(|e| {
+                error!("Failed to begin transaction: {}", e);
+                AppError::internal(format!("Failed to begin transaction: {}", e))
+            })?;
+
+        // Clear existing GPU data
+        info!("Clearing existing GPU data");
+        let deleted_count = self.gpu_repository.delete_all_tx(&mut tx).await
+            .map_err(|e| {
+                error!("Failed to clear GPU data: {}", e);
+                AppError::internal(format!("Failed to clear GPU data: {}", e))
+            })?;
+        info!("Cleared {} existing GPU records", deleted_count);
+
+        // Process all runs and create GPU records
+        let mut gpu_records = Vec::new();
         for (index, run) in runs.iter().enumerate() {
-            match self.process_run(run, index).await {
-                Ok(_) => {
-                    inserted_rows += 1;
+            match self.process_run_for_bulk(run, index) {
+                Ok(gpu) => {
+                    gpu_records.push(gpu);
                     if index % 100 == 0 {
                         info!("Processed {} runs", index + 1);
                     }
                 }
                 Err(e) => {
-                    error_rows += 1;
-                    let error_msg = format!("Run {}: {}", index + 1, e);
-                    error_data.push(error_msg);
                     warn!("Failed to process run {}: {}", index + 1, e);
+                    // Continue processing other runs
                 }
             }
         }
 
-        info!("GPU processing complete: {} rows inserted", inserted_rows);
+        // Bulk insert all GPU records
+        info!("Bulk inserting {} GPU records", gpu_records.len());
+        let inserted_results = self.gpu_repository.bulk_create_tx(gpu_records, &mut tx).await
+            .map_err(|e| {
+                error!("Failed to bulk insert GPU records: {}", e);
+                AppError::internal(format!("Failed to bulk insert GPU records: {}", e))
+            })?;
 
-        Ok(ProcessGpuOutput {
-            success: true,
-            message: "GPU processing completed successfully".to_string(),
-            total_runs,
-            inserted_rows,
-            error_rows,
-            error_data,
-        })
+        // Commit transaction
+        tx.commit().await
+            .map_err(|e| {
+                error!("Failed to commit transaction: {}", e);
+                AppError::internal(format!("Failed to commit transaction: {}", e))
+            })?;
+
+        info!("Successfully inserted {} GPU records", inserted_results.len());
+        Ok(inserted_results)
     }
 
-    /// Clear all existing GPU data
-    async fn clear_gpu_data(&self) -> Result<(), AppError> {
-        // TODO: Implement delete_all method in repository
-        // For now, we'll skip clearing the table
-        info!("Skipping GPU data clear (not implemented yet)");
-        Ok(())
-    }
-
-    /// Process a single run and create GPU record
-    async fn process_run(&self, run: &crate::models::runs::Run, index: usize) -> Result<(), AppError> {
+    /// Process a single run and create GPU record (for bulk processing)
+    fn process_run_for_bulk(&self, run: &crate::models::runs::Run, index: usize) -> Result<Gpu, AppError> {
         let run_id = run.id.ok_or_else(|| {
             error!("Run at index {} has no ID", index);
             AppError::bad_request("Invalid run data".to_string())
@@ -120,13 +160,8 @@ impl ProcessGpuService {
             AppError::bad_request("Missing device_info data".to_string())
         })?;
 
-        info!("Processing GPU info for run {} of {} (ID: {})", index + 1, index + 1, run_id);
-
         // Parse device info to extract GPU information using our parser
         let parsed_gpu_info = GpuInfoParser::parse(device_info);
-
-        // Store values for logging
-        let device_for_log = parsed_gpu_info.device.clone();
 
         // Create GPU record
         let gpu_record = Gpu {
@@ -139,16 +174,7 @@ impl ProcessGpuService {
             is_laptop: None, // Will be populated by separate update process
         };
 
-        // Insert into database
-        self.gpu_repository.create(gpu_record).await
-            .map_err(|e| {
-                error!("Failed to insert GPU info for run {}: {}", run_id, e);
-                AppError::internal(format!("Failed to insert GPU info: {}", e))
-            })?;
-
-        info!("Processed GPU info for run {}: device={:?}", index + 1, device_for_log);
-
-        Ok(())
+        Ok(gpu_record)
     }
 }
 

@@ -18,4 +18,20 @@ pub trait TransactionRepository<'a, T, Id> {
     async fn create_tx(&self, entity: T, tx: &mut Transaction<'a, Sqlite>) -> Result<T, Error>;
     async fn update_tx(&self, entity: T, tx: &mut Transaction<'a, Sqlite>) -> Result<T, Error>;
     async fn delete_tx(&self, id: Id, tx: &mut Transaction<'a, Sqlite>) -> Result<(), Error>;
+}
+
+/// Trait for repositories that support bulk operations.
+#[async_trait]
+pub trait BulkRepository<T, Id> {
+    async fn bulk_create(&self, entities: Vec<T>) -> Result<Vec<T>, Error>;
+    async fn bulk_update(&self, entities: Vec<T>) -> Result<Vec<T>, Error>;
+    async fn delete_all(&self) -> Result<usize, Error>;
+}
+
+/// Trait for repositories that support bulk operations with transactions.
+#[async_trait]
+pub trait BulkTransactionRepository<'a, T, Id> {
+    async fn bulk_create_tx(&self, entities: Vec<T>, tx: &mut Transaction<'a, Sqlite>) -> Result<Vec<T>, Error>;
+    async fn bulk_update_tx(&self, entities: Vec<T>, tx: &mut Transaction<'a, Sqlite>) -> Result<Vec<T>, Error>;
+    async fn delete_all_tx(&self, tx: &mut Transaction<'a, Sqlite>) -> Result<usize, Error>;
 } 

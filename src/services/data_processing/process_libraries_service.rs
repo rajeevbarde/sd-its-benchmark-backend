@@ -6,10 +6,11 @@ use crate::{
     repositories::{
         libraries_repository::LibrariesRepository,
         runs_repository::RunsRepository,
-        traits::Repository,
+        traits::{Repository, BulkTransactionRepository},
     },
     services::parsers::LibrariesParser,
 };
+use sqlx::SqlitePool;
 
 #[derive(Debug)]
 pub struct ProcessLibrariesOutput {
@@ -24,16 +25,19 @@ pub struct ProcessLibrariesOutput {
 pub struct ProcessLibrariesService {
     runs_repository: RunsRepository,
     libraries_repository: LibrariesRepository,
+    pool: SqlitePool,
 }
 
 impl ProcessLibrariesService {
     pub fn new(
         runs_repository: RunsRepository,
         libraries_repository: LibrariesRepository,
+        pool: SqlitePool,
     ) -> Self {
         Self {
             runs_repository,
             libraries_repository,
+            pool,
         }
     }
 
@@ -48,18 +52,7 @@ impl ProcessLibrariesService {
     /// # Returns
     /// * `ProcessLibrariesOutput` - Processing results and statistics
     pub async fn process_libraries(&self) -> Result<ProcessLibrariesOutput, AppError> {
-        info!("Processing libraries from runs table");
-
-        let mut inserted_rows = 0;
-        let mut error_rows = 0;
-        let mut error_data = Vec::new();
-
-        // For now, we'll use the regular repository methods without transactions
-        // TODO: Add proper transaction support to the repository
-
-        // Clear existing libraries
-        self.clear_libraries().await?;
-        info!("Cleared existing libraries");
+        info!("Processing libraries from runs table with transaction support");
 
         // Fetch all runs data
         let runs = self.runs_repository.find_all().await.map_err(|e| {
@@ -70,46 +63,93 @@ impl ProcessLibrariesService {
         let total_runs = runs.len();
         info!("Found {} runs to process", total_runs);
 
-        // Process each run
+        // Process data using direct transaction management
+        let result = self.execute_transaction_with_bulk_operations(runs).await;
+
+        match result {
+            Ok(inserted_results) => {
+                let inserted_rows = inserted_results.len();
+                info!("Libraries processing completed successfully. Total: {}, Inserted: {}", 
+                      total_runs, inserted_rows);
+
+                Ok(ProcessLibrariesOutput {
+                    success: true,
+                    message: "Libraries processing completed successfully with transaction support".to_string(),
+                    total_runs,
+                    inserted_rows,
+                    error_rows: 0, // No individual row errors with bulk operations
+                    error_data: vec![], // No individual row errors with bulk operations
+                })
+            }
+            Err(e) => {
+                error!("Libraries processing failed: {}", e);
+                Ok(ProcessLibrariesOutput {
+                    success: false,
+                    message: format!("Libraries processing failed: {}", e),
+                    total_runs,
+                    inserted_rows: 0,
+                    error_rows: total_runs, // All rows failed
+                    error_data: vec![format!("Transaction failed: {}", e)],
+                })
+            }
+        }
+    }
+
+    /// Execute transaction with bulk operations
+    async fn execute_transaction_with_bulk_operations(&self, runs: Vec<crate::models::runs::Run>) -> Result<Vec<Libraries>, AppError> {
+        let mut tx = self.pool.begin().await
+            .map_err(|e| {
+                error!("Failed to begin transaction: {}", e);
+                AppError::internal(format!("Failed to begin transaction: {}", e))
+            })?;
+
+        // Clear existing libraries
+        info!("Clearing existing libraries");
+        let deleted_count = self.libraries_repository.delete_all_tx(&mut tx).await
+            .map_err(|e| {
+                error!("Failed to clear libraries: {}", e);
+                AppError::internal(format!("Failed to clear libraries: {}", e))
+            })?;
+        info!("Cleared {} existing libraries", deleted_count);
+
+        // Process all runs and create libraries
+        let mut libraries_records = Vec::new();
         for (index, run) in runs.iter().enumerate() {
-            match self.process_run(run, index).await {
-                Ok(_) => {
-                    inserted_rows += 1;
+            match self.process_run_for_bulk(run, index) {
+                Ok(libraries) => {
+                    libraries_records.push(libraries);
                     if index % 100 == 0 {
                         info!("Processed {} runs", index + 1);
                     }
                 }
                 Err(e) => {
-                    error_rows += 1;
-                    let error_msg = format!("Run {}: {}", index + 1, e);
-                    error_data.push(error_msg);
                     warn!("Failed to process run {}: {}", index + 1, e);
+                    // Continue processing other runs
                 }
             }
         }
 
-        info!("Libraries processing complete: {} rows inserted", inserted_rows);
+        // Bulk insert all libraries
+        info!("Bulk inserting {} libraries", libraries_records.len());
+        let inserted_results = self.libraries_repository.bulk_create_tx(libraries_records, &mut tx).await
+            .map_err(|e| {
+                error!("Failed to bulk insert libraries: {}", e);
+                AppError::internal(format!("Failed to bulk insert libraries: {}", e))
+            })?;
 
-        Ok(ProcessLibrariesOutput {
-            success: true,
-            message: "Libraries processing completed successfully".to_string(),
-            total_runs,
-            inserted_rows,
-            error_rows,
-            error_data,
-        })
+        // Commit transaction
+        tx.commit().await
+            .map_err(|e| {
+                error!("Failed to commit transaction: {}", e);
+                AppError::internal(format!("Failed to commit transaction: {}", e))
+            })?;
+
+        info!("Successfully inserted {} libraries", inserted_results.len());
+        Ok(inserted_results)
     }
 
-    /// Clear all existing libraries
-    async fn clear_libraries(&self) -> Result<(), AppError> {
-        // TODO: Implement delete_all method in repository
-        // For now, we'll skip clearing the table
-        info!("Skipping libraries clear (not implemented yet)");
-        Ok(())
-    }
-
-    /// Process a single run and create libraries record
-    async fn process_run(&self, run: &crate::models::runs::Run, index: usize) -> Result<(), AppError> {
+    /// Process a single run and create libraries record (for bulk processing)
+    fn process_run_for_bulk(&self, run: &crate::models::runs::Run, index: usize) -> Result<Libraries, AppError> {
         let run_id = run.id.ok_or_else(|| {
             error!("Run at index {} has no ID", index);
             AppError::bad_request("Invalid run data".to_string())
@@ -125,14 +165,8 @@ impl ProcessLibrariesService {
             AppError::bad_request("Missing xformers data".to_string())
         })?;
 
-        info!("Processing libraries for run {} of {} (ID: {})", index + 1, index + 1, run_id);
-
         // Parse model info to extract library versions using our parser
         let parsed_libraries = LibrariesParser::parse(model_info);
-
-        // Store values for logging
-        let torch_for_log = parsed_libraries.torch.clone();
-        let xformers_for_log = parsed_libraries.xformers.clone();
 
         // Create libraries record
         let libraries_record = Libraries {
@@ -145,17 +179,7 @@ impl ProcessLibrariesService {
             transformers: parsed_libraries.transformers,
         };
 
-        // Insert into database
-        self.libraries_repository.create(libraries_record).await
-            .map_err(|e| {
-                error!("Failed to insert libraries for run {}: {}", run_id, e);
-                AppError::internal(format!("Failed to insert libraries: {}", e))
-            })?;
-
-        info!("Processed libraries for run {}: torch={:?}, xformers={:?}", 
-              index + 1, torch_for_log, xformers_for_log);
-
-        Ok(())
+        Ok(libraries_record)
     }
 }
 

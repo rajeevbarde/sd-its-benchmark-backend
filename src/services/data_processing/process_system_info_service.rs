@@ -6,10 +6,11 @@ use crate::{
     repositories::{
         runs_repository::RunsRepository,
         system_info_repository::SystemInfoRepository,
-        traits::Repository,
+        traits::{Repository, BulkTransactionRepository},
     },
     services::parsers::SystemInfoParser,
 };
+use sqlx::SqlitePool;
 
 #[derive(Debug)]
 pub struct ProcessSystemInfoOutput {
@@ -24,16 +25,19 @@ pub struct ProcessSystemInfoOutput {
 pub struct ProcessSystemInfoService {
     runs_repository: RunsRepository,
     system_info_repository: SystemInfoRepository,
+    pool: SqlitePool,
 }
 
 impl ProcessSystemInfoService {
     pub fn new(
         runs_repository: RunsRepository,
         system_info_repository: SystemInfoRepository,
+        pool: SqlitePool,
     ) -> Self {
         Self {
             runs_repository,
             system_info_repository,
+            pool,
         }
     }
 
@@ -48,18 +52,7 @@ impl ProcessSystemInfoService {
     /// # Returns
     /// * `ProcessSystemInfoOutput` - Processing results and statistics
     pub async fn process_system_info(&self) -> Result<ProcessSystemInfoOutput, AppError> {
-        info!("Processing system info from runs table");
-
-        let mut inserted_rows = 0;
-        let mut error_rows = 0;
-        let mut error_data = Vec::new();
-
-        // For now, we'll use the regular repository methods without transactions
-        // TODO: Add proper transaction support to the repository
-
-        // Clear existing system info
-        self.clear_system_info().await?;
-        info!("Cleared existing system info");
+        info!("Processing system info from runs table with transaction support");
 
         // Fetch all runs data
         let runs = self.runs_repository.find_all().await.map_err(|e| {
@@ -70,49 +63,100 @@ impl ProcessSystemInfoService {
         let total_runs = runs.len();
         info!("Found {} runs to process", total_runs);
 
-        // Process each run
+        // Process data using direct transaction management
+        let result = self.execute_transaction_with_bulk_operations(runs).await;
+
+        match result {
+            Ok(inserted_results) => {
+                let inserted_rows = inserted_results.len();
+                info!("System info processing completed successfully. Total: {}, Inserted: {}", 
+                      total_runs, inserted_rows);
+
+                Ok(ProcessSystemInfoOutput {
+                    success: true,
+                    message: "System info processing completed successfully with transaction support".to_string(),
+                    total_runs,
+                    inserted_rows,
+                    error_rows: 0, // No individual row errors with bulk operations
+                    error_data: vec![], // No individual row errors with bulk operations
+                })
+            }
+            Err(e) => {
+                error!("System info processing failed: {}", e);
+                Ok(ProcessSystemInfoOutput {
+                    success: false,
+                    message: format!("System info processing failed: {}", e),
+                    total_runs,
+                    inserted_rows: 0,
+                    error_rows: total_runs, // All rows failed
+                    error_data: vec![format!("Transaction failed: {}", e)],
+                })
+            }
+        }
+    }
+
+    /// Execute transaction with bulk operations
+    async fn execute_transaction_with_bulk_operations(&self, runs: Vec<crate::models::runs::Run>) -> Result<Vec<SystemInfo>, AppError> {
+        let mut tx = self.pool.begin().await
+            .map_err(|e| {
+                error!("Failed to begin transaction: {}", e);
+                AppError::internal(format!("Failed to begin transaction: {}", e))
+            })?;
+
+        // Clear existing system info
+        info!("Clearing existing system info");
+        let deleted_count = self.system_info_repository.delete_all_tx(&mut tx).await
+            .map_err(|e| {
+                error!("Failed to clear system info: {}", e);
+                AppError::internal(format!("Failed to clear system info: {}", e))
+            })?;
+        info!("Cleared {} existing system info", deleted_count);
+
+        // Process all runs and create system info
+        let mut system_info_records = Vec::new();
         for (index, run) in runs.iter().enumerate() {
-            match self.process_run(run, index).await {
-                Ok(inserted) => {
-                    if inserted {
-                        inserted_rows += 1;
+            match self.process_run_for_bulk(run, index) {
+                Ok(Some(system_info)) => {
+                    system_info_records.push(system_info);
+                    if index % 100 == 0 {
+                        info!("Processed {} runs", index + 1);
                     }
+                }
+                Ok(None) => {
+                    // Skip runs with missing required fields
                     if index % 100 == 0 {
                         info!("Processed {} runs", index + 1);
                     }
                 }
                 Err(e) => {
-                    error_rows += 1;
-                    let error_msg = format!("Run {}: {}", index + 1, e);
-                    error_data.push(error_msg);
                     warn!("Failed to process run {}: {}", index + 1, e);
+                    // Continue processing other runs
                 }
             }
         }
 
-        info!("System info processing complete: {} rows inserted", inserted_rows);
+        // Bulk insert all system info
+        info!("Bulk inserting {} system info records", system_info_records.len());
+        let inserted_results = self.system_info_repository.bulk_create_tx(system_info_records, &mut tx).await
+            .map_err(|e| {
+                error!("Failed to bulk insert system info: {}", e);
+                AppError::internal(format!("Failed to bulk insert system info: {}", e))
+            })?;
 
-        Ok(ProcessSystemInfoOutput {
-            success: true,
-            message: "System info processing completed successfully".to_string(),
-            total_runs,
-            inserted_rows,
-            error_rows,
-            error_data,
-        })
+        // Commit transaction
+        tx.commit().await
+            .map_err(|e| {
+                error!("Failed to commit transaction: {}", e);
+                AppError::internal(format!("Failed to commit transaction: {}", e))
+            })?;
+
+        info!("Successfully inserted {} system info records", inserted_results.len());
+        Ok(inserted_results)
     }
 
-    /// Clear all existing system info
-    async fn clear_system_info(&self) -> Result<(), AppError> {
-        // TODO: Implement delete_all method in repository
-        // For now, we'll skip clearing the table
-        info!("Skipping system info clear (not implemented yet)");
-        Ok(())
-    }
-
-    /// Process a single run and create system info
-    /// Returns true if a record was inserted, false if skipped due to missing fields
-    async fn process_run(&self, run: &crate::models::runs::Run, index: usize) -> Result<bool, AppError> {
+    /// Process a single run and create system info (for bulk processing)
+    /// Returns Some(SystemInfo) if valid, None if skipped due to missing fields
+    fn process_run_for_bulk(&self, run: &crate::models::runs::Run, index: usize) -> Result<Option<SystemInfo>, AppError> {
         let run_id = run.id.ok_or_else(|| {
             error!("Run at index {} has no ID", index);
             AppError::bad_request("Invalid run data".to_string())
@@ -123,13 +167,8 @@ impl ProcessSystemInfoService {
             AppError::bad_request("Missing system_info data".to_string())
         })?;
 
-        info!("Processing system info for run {} of {} (ID: {})", index + 1, index + 1, run_id);
-
         // Parse system info from system_info string using our parser
         let parsed_system_info = SystemInfoParser::parse(system_info);
-
-        // Store arch for logging
-        let arch_for_log = parsed_system_info.arch.clone();
 
         // Only insert if all required fields are present
         if parsed_system_info.arch.is_some() &&
@@ -149,18 +188,10 @@ impl ProcessSystemInfoService {
                 python: parsed_system_info.python,
             };
 
-            // Insert into database
-            self.system_info_repository.create(system_info_record).await
-                .map_err(|e| {
-                    error!("Failed to insert system info for run {}: {}", run_id, e);
-                    AppError::internal(format!("Failed to insert system info: {}", e))
-                })?;
-
-            info!("Processed system info for run {}: arch={:?}", index + 1, arch_for_log);
-            Ok(true)
+            Ok(Some(system_info_record))
         } else {
             warn!("Skipping run {} due to missing required system info fields", run_id);
-            Ok(false)
+            Ok(None)
         }
     }
 }
